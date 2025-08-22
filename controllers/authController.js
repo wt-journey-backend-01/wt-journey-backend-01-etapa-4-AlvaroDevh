@@ -1,9 +1,22 @@
-import userRepository from "../repositories/userRepository.js";
+import { z } from "zod";
+import userRepository from "../repositories/usuariosRepository.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/errorHandler.js";
 
+
 const SECRET = process.env.JWT_SECRET || "secret";
+
+const signUpSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido"),
+  senha: z.string()
+    .min(8, "Senha deve ter pelo menos 8 caracteres")
+    .regex(/[a-z]/, "Senha deve conter letra minúscula")
+    .regex(/[A-Z]/, "Senha deve conter letra maiúscula")
+    .regex(/[0-9]/, "Senha deve conter número")
+    .regex(/[\W_]/, "Senha deve conter caractere especial"),
+});
 
 const getProfile = async (req, res, next) => {
   try {
@@ -41,18 +54,19 @@ const login = async (req, res, next) => {
       { expiresIn: "1h" }
     );
 
-    res.status(200).json({
-      message: "User logged in successfully",
-      token,
+   res.status(200).json({
+      acess_token: token,
     });
   } catch (error) {
-    next(new ApiError("Error logging in", 400, error.message));
+     error = new Error("User not found");
+    error.status = 404;
+    next(error);
   }
 };
 
-const signUp = async (req, res, next) => {
+const register = async (req, res, next) => {
   try {
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha } = signUpSchema.parse(req.body);
 
     const user = await userRepository.findUserByEmail(email);
 
@@ -61,12 +75,12 @@ const signUp = async (req, res, next) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashedsenha = await bcrypt.hash(senha, salt);
+    const hashedSenha = await bcrypt.hash(senha, salt);
 
     const newUser = await userRepository.insertUser({
       nome,
       email,
-      senha: hashedsenha,
+      senha: hashedSenha,
     });
 
     res.status(201).json({
@@ -78,9 +92,34 @@ const signUp = async (req, res, next) => {
   }
 };
 
+const logout = async (req, res) => {
+  res.status(200).json({
+    message: "Logout realizado com sucesso. Remova o token do cliente."
+  });
+};
+
+const DELETE = async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (req.user.id !== userId) {
+      return res.status(403).json({ error: "Você não pode deletar outro usuário" });
+    }
+
+    await userRepository.deleteUser(userId);
+
+    res.status(200).json({ message: "Usuário deletado com sucesso" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export default {
   getProfile,
   login,
-  signUp,
+  register,
+  signUpSchema,
+  logout,
+  DELETE
 };

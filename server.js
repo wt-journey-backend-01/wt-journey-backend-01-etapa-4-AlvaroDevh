@@ -6,6 +6,7 @@ import agentesRoutes from "./routes/agentesRoutes.js";
 import casosRoutes from "./routes/casosRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 
+
 import setupSwagger from "./docs/swagger.js";
 import errorHandler from "./utils/errorHandler.js";
 

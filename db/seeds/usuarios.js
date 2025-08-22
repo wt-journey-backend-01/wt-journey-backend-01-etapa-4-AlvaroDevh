@@ -1,7 +1,7 @@
 export async function seed(knex)  {
-  await knex("users").del();
+  await knex("usuarios").del();
 
-  await knex("users").insert([
+  await knex("usuarios").insert([
     {
       nome: "Alice Souza",
       email: "alice@example.com",

@@ -23,12 +23,12 @@ const router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/SignUp'
+ *             $ref: '#/components/schemas/register'
  *     responses:
  *       201:
  *         description: Usuário criado com sucesso
  */
-router.post("/signUp", authController.signUp);
+router.post("/register", authController.register);
 
 /**
  * @swagger
@@ -47,5 +47,42 @@ router.post("/signUp", authController.signUp);
  *         description: Login realizado com sucesso, retorna token JWT
  */
 router.post("/login", authController.login);
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout do usuário
+ *     tags: [Autenticação]
+ *     responses:
+ *       200:
+ *         description: Logout realizado com sucesso
+ */
+router.post("/logout", authController.logout);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Deletar usuário
+ *     tags: [Autenticação]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID do usuário
+ *     responses:
+ *       200:
+ *         description: Usuário deletado com sucesso
+ *       403:
+ *         description: Tentativa de deletar outro usuário
+ *       401:
+ *         description: Token inválido ou ausente
+ */
+router.delete("/users/:id", authMiddleware, authController.DELETE);
+
+
 
 export default router;

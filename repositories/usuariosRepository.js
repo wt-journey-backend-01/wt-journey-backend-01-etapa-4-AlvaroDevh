@@ -1,15 +1,15 @@
 import db from "../db/db.js"; 
 
 export const findUserByEmail = async (email) => {
-  return db("users").where({ email }).first();
+  return db("usuarios").where({ email }).first();
 };
 
 export const findUserById = async (id) => {
-  return db("users").where({ id }).first();
+  return db("usuarios").where({ id }).first();
 };
 
 export const insertUser = async (user) => {
-  const [row] = await db("users")
+  const [row] = await db("usuarios")
     .insert({
       nome: user.nome,
       email: user.email,
@@ -20,8 +20,13 @@ export const insertUser = async (user) => {
   return findUserById(row.id); 
 };
 
+export const deleteUser = async (id) => {
+  return db("users").where({ id }).del();
+};
+
 export default {
   findUserByEmail,
   findUserById,
   insertUser,
+  deleteUser
 };
