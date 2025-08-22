@@ -1,147 +1,35 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 9 créditos restantes para usar o sistema de feedback AI.
+Você tem 8 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para AlvaroDevh:
 
-Nota final: **17.8/100**
+Nota final: **51.2/100**
 
-```markdown
-# Feedback para AlvaroDevh 🚓✨
+# Feedback para AlvaroDevh 🚀
 
-Olá, Alvaro! Primeiro, parabéns por todo o esforço e por ter avançado bastante nessa etapa de segurança e autenticação da sua API! 🎉 Você já tem uma base sólida com as rotas, controllers, repositórios e o uso do Express com PostgreSQL, o que é ótimo para construir uma aplicação robusta.
-
----
-
-## 🎯 O que você mandou muito bem
-
-- **Estrutura geral do projeto:** Você organizou muito bem os arquivos principais, com controllers, routes, middlewares e utils, o que é essencial para manter o código escalável.
-- **Controllers e Repositórios:** Sua separação entre lógica de negócio (controllers) e acesso ao banco (repositories) está correta e bem feita.
-- **Uso do Knex:** As queries estão bem construídas, e você usa `.returning('*')` para obter os dados após inserções e atualizações, o que é uma boa prática.
-- **Middleware de autenticação:** O `authMiddleware.js` está implementado corretamente para extrair e validar o JWT, adicionando o usuário autenticado no `req.user`.
-- **Endpoints de agentes e casos:** Você implementou as rotas e controllers com validações básicas, tratamento de erros e respostas HTTP adequadas.
-- **Bônus conquistados:** Você já implementou o endpoint `/usuarios/me` para retornar dados do usuário autenticado, além de filtros avançados e buscas por palavras-chave em casos e agentes. Isso mostra que você foi além do básico! 🌟
+Olá, Alvaro! Tudo bem? Primeiro, parabéns pelo esforço e dedicação até aqui! 🎉 Você avançou bastante na construção da sua API REST com Node.js, Express e PostgreSQL, e já entregou diversos pontos importantes funcionando, especialmente a criação e login de usuários, além da proteção básica das rotas com JWT. Isso é a base para uma aplicação segura e profissional — você está no caminho certo! 👏
 
 ---
 
-## 🔎 Pontos que precisam de atenção para avançar ainda mais
+## 🎯 Pontos Positivos e Conquistas Bônus 🌟
 
-### 1. **Validação e tratamento de erros no cadastro de usuários**
-
-Ao analisar seu `authController.js`, percebi que o seu endpoint de registro (`signUp`) não está validando os campos obrigatórios como nome, email e senha, nem está validando a força da senha conforme o requisito (mínimo 8 caracteres, letras maiúsculas, minúsculas, números e caracteres especiais). Isso faz com que o sistema aceite dados inválidos e não retorne erro 400 quando deveria.
-
-Além disso, você está usando nomes diferentes para os campos no controller e no banco:
-
-- No banco (migration), o campo é `nome`, mas no controller você usa `name`.
-- No banco e no controller, o campo da senha é `senha` e `password`, respectivamente.
-
-Esse desalinhamento pode causar problemas na hora de inserir e consultar dados.
-
-**Trecho com problema:**
-
-```js
-const signUp = async (req, res, next) => {
-  try {
-    const { name, email, password } = req.body; // Usa "name" aqui
-    // Não há validações para nome vazio, email vazio ou senha fraca
-    // ...
-    const newUser = await userRepository.insertUser({
-      name,
-      email,
-      password: hashedPassword,
-    });
-    // ...
-  } catch (error) {
-    next(new ApiError("Error creating user", 400, error.message));
-  }
-};
-```
-
-**O que fazer:**
-
-- Padronize os nomes dos campos para `nome`, `email` e `senha` para manter coerência com o banco e front.
-- Antes de tentar criar o usuário, valide:
-  - Se `nome`, `email` e `senha` estão presentes e não vazios.
-  - Se a senha atende os critérios de segurança (regex para validar).
-  - Se não há campos extras inesperados.
-- Retorne erro 400 com mensagens claras para cada caso de validação falha.
-
-**Exemplo simples de validação de senha:**
-
-```js
-function validarSenha(senha) {
-  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-  return regex.test(senha);
-}
-```
-
-**Sugestão de validação no `signUp`:**
-
-```js
-const signUp = async (req, res, next) => {
-  try {
-    const { nome, email, senha } = req.body;
-
-    if (!nome || nome.trim() === "") {
-      return next(new ApiError("Nome é obrigatório", 400, { nome: "Nome é obrigatório" }));
-    }
-    if (!email || email.trim() === "") {
-      return next(new ApiError("Email é obrigatório", 400, { email: "Email é obrigatório" }));
-    }
-    if (!senha || !validarSenha(senha)) {
-      return next(new ApiError("Senha inválida", 400, { senha: "Senha deve ter 8+ caracteres, com maiúsculas, minúsculas, números e caracteres especiais" }));
-    }
-
-    // Verificar se email já existe
-    const user = await userRepository.findUserByEmail(email);
-    if (user) {
-      return next(new ApiError("Email já em uso", 400, { email: "Email já em uso" }));
-    }
-
-    const salt = await bcrypt.genSalt(parseInt(process.env.SALT_ROUNDS) || 10);
-    const hashedPassword = await bcrypt.hash(senha, salt);
-
-    const newUser = await userRepository.insertUser({
-      nome,
-      email,
-      senha: hashedPassword,
-    });
-
-    res.status(201).json({
-      message: "Usuário criado com sucesso",
-      user: newUser,
-    });
-  } catch (error) {
-    next(new ApiError("Erro ao criar usuário", 400, error.message));
-  }
-};
-```
+- Sua implementação básica de registro (`signUp`) e login (`login`) está funcionando e retornando JWTs válidos com expiração. Isso é essencial para segurança.
+- Você já protegeu rotas sensíveis, como `/agentes` e `/casos`, com middleware de autenticação JWT.
+- Os endpoints para criação, atualização e deleção de agentes e casos estão funcionando bem, com status codes adequados.
+- Implementou filtros para casos por status e agente, o que é um ótimo bônus para a usabilidade da API.
+- O logout e exclusão de usuários também estão implementados corretamente.
+- Ótima organização do projeto seguindo a arquitetura MVC (controllers, repositories, routes, middlewares), o que facilita manutenção e escalabilidade.
 
 ---
 
-### 2. **Repositório de usuários está com nome diferente e ausente na estrutura**
+## 🚩 O que precisa de atenção e melhorias
 
-No seu projeto, você tem um arquivo chamado `repositories/userRepository.js`, mas a estrutura esperada é `repositories/usuariosRepository.js`.
+### 1. Estrutura dos Diretórios e Nomenclatura dos Arquivos
 
-Além disso, no seu `authController.js` você importa `userRepository`:
+Percebi que seu repositório tem o arquivo `userRepository.js` dentro de `repositories/`, mas o desafio pede explicitamente um arquivo chamado `usuariosRepository.js` com essa responsabilidade. Essa diferença de nome pode causar problemas na organização e nos testes automáticos.
 
-```js
-import userRepository from "../repositories/userRepository.js";
-```
-
-Mas no seu projeto, o arquivo `usuariosRepository.js` não existe, e o arquivo `userRepository.js` está presente. Isso gera inconsistência com a estrutura solicitada e pode causar confusão.
-
-**O que fazer:**
-
-- Renomeie o arquivo `userRepository.js` para `usuariosRepository.js` para seguir o padrão solicitado.
-- Atualize as importações para usar `usuariosRepository`.
-- Garanta que o nome do objeto exportado seja coerente.
-
----
-
-### 3. **Nomes dos campos no banco e no código**
-
-No seu migration, a tabela de usuários foi criada com os campos:
+Além disso, no arquivo de migration você criou a tabela `users` em vez de `usuarios`:
 
 ```js
 await knex.schema.createTable("users", (table) => {
@@ -152,29 +40,78 @@ await knex.schema.createTable("users", (table) => {
 });
 ```
 
-Observe que o nome da tabela é `"users"`, mas o requisito pedia a tabela `"usuarios"`.
+**Por que isso importa?**  
+A padronização de nomes é fundamental para manter a consistência do projeto e facilitar a integração com outras partes do código e testes. Se o seu repositório e migrations usam nomes diferentes do esperado, isso pode gerar erros difíceis de rastrear.
 
-Além disso, o campo `senha` está correto, mas no controller você está usando `password`.
-
-**O que fazer:**
-
-- Alinhe o nome da tabela para `"usuarios"` para seguir o requisito.
-- Padronize os nomes dos campos para `nome`, `email` e `senha` em todo o código.
-- Atualize o repositório para usar a tabela correta.
+**Sugestão:**  
+Renomeie a tabela para `usuarios` na migration e também o arquivo `userRepository.js` para `usuariosRepository.js`. Ajuste as importações para refletir essa mudança.
 
 ---
 
-### 4. **Resposta do login não está no formato esperado**
+### 2. Validação dos Dados do Usuário no Registro (signUp)
 
-O requisito pede que o endpoint de login retorne o token JWT no formato:
+Vi que seu `authController.js` faz o cadastro assim:
 
-```json
-{
-  "acess_token": "token aqui"
+```js
+const { nome, email, senha } = req.body;
+
+const user = await userRepository.findUserByEmail(email);
+
+if (user) {
+  return next(new Error("User already exists"));
 }
+
+const salt = await bcrypt.genSalt(10);
+const hashedsenha = await bcrypt.hash(senha, salt);
+
+const newUser = await userRepository.insertUser({
+  nome,
+  email,
+  senha: hashedsenha,
+});
 ```
 
-Mas no seu `authController.js`, você está retornando:
+**Problema:**  
+Não há validações explícitas para os campos `nome`, `email` e especialmente para a senha. O desafio pede que a senha tenha pelo menos 8 caracteres, com letras maiúsculas, minúsculas, números e caracteres especiais. Também é necessário garantir que `nome` e `email` não sejam vazios ou nulos e que não existam campos extras.
+
+**Por que isso é importante?**  
+Sem essas validações, usuários podem ser criados com dados inválidos, o que compromete a segurança e a integridade do sistema.
+
+**Como corrigir:**  
+Você pode usar uma biblioteca de validação como o [Zod](https://github.com/colinhacks/zod) (que já está nas suas dependências) para definir schemas e validar os dados antes de prosseguir. Exemplo:
+
+```js
+import { z } from "zod";
+
+const signUpSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido"),
+  senha: z.string()
+    .min(8, "Senha deve ter pelo menos 8 caracteres")
+    .regex(/[a-z]/, "Senha deve conter letra minúscula")
+    .regex(/[A-Z]/, "Senha deve conter letra maiúscula")
+    .regex(/[0-9]/, "Senha deve conter número")
+    .regex(/[\W_]/, "Senha deve conter caractere especial"),
+});
+
+const signUp = async (req, res, next) => {
+  try {
+    signUpSchema.parse(req.body); // Vai lançar erro se inválido
+
+    // resto do código...
+  } catch (e) {
+    return next(new ApiError("Erro de validação", 400, e.errors));
+  }
+};
+```
+
+Recomendo fortemente essa abordagem para garantir que os dados estejam de acordo com as regras do desafio.
+
+---
+
+### 3. Resposta do Login com Token JWT
+
+No seu `authController.js`, o login retorna:
 
 ```js
 res.status(200).json({
@@ -183,11 +120,19 @@ res.status(200).json({
 });
 ```
 
-Ou seja, o campo está nomeado como `token` e não `acess_token`, e tem uma mensagem extra.
+No entanto, o desafio pede que a resposta contenha o token sob o campo `acess_token` (com "c") e sem a mensagem extra, exatamente assim:
 
-**O que fazer:**
+```json
+{
+  "acess_token": "token aqui"
+}
+```
 
-- Ajuste a resposta do login para:
+**Por que isso importa?**  
+Os testes e clientes que consomem sua API esperam esse formato específico. Se não corresponder, podem interpretar como erro.
+
+**Como corrigir:**  
+Altere para:
 
 ```js
 res.status(200).json({
@@ -195,107 +140,133 @@ res.status(200).json({
 });
 ```
 
-Assim você segue exatamente o que foi pedido, garantindo compatibilidade com clientes e testes.
-
 ---
 
-### 5. **Proteção das rotas com middleware de autenticação**
+### 4. Proteção das Rotas com Middleware de Autenticação
 
-No seu `server.js`, você monta as rotas assim:
+Você já criou o middleware `authMiddleware.js` que valida o JWT e adiciona `req.user`. Isso é ótimo! Porém, no seu `server.js` as rotas estão assim:
 
 ```js
 app.use("/casos", casosRoutes);
-app.use( agentesRoutes);
-app.use("/auth", authRoutes);
+app.use(agentesRoutes);
+app.use(authRoutes);
 ```
 
-Note que a rota de agentes não tem prefixo, e nenhuma rota está protegida com o middleware de autenticação.
+Repare que as rotas de agentes não estão prefixadas com `/agentes`, apenas o de casos tem `/casos`. Isso pode gerar confusão e dificultar a proteção correta.
 
-**O que fazer:**
+Além disso, não vi aplicação explícita do middleware de autenticação nas rotas `agentesRoutes` e `casosRoutes`.
 
-- Corrija a rota de agentes para ter prefixo `/agentes`:
+**Por que isso importa?**  
+O middleware de autenticação deve ser aplicado para proteger as rotas sensíveis, garantindo que só usuários autenticados possam acessá-las.
 
-```js
-app.use("/agentes", agentesRoutes);
-```
-
-- Importe e aplique o middleware de autenticação nas rotas que precisam de proteção, por exemplo:
+**Como corrigir:**  
+No `server.js`, faça assim:
 
 ```js
 import authMiddleware from "./middlewares/authMiddleware.js";
 
-app.use("/agentes", authMiddleware, agentesRoutes);
 app.use("/casos", authMiddleware, casosRoutes);
+app.use("/agentes", authMiddleware, agentesRoutes);
+app.use("/auth", authRoutes);
 ```
 
-Assim, você garante que apenas usuários autenticados possam acessar esses recursos.
+E ajuste as rotas para usarem os prefixos corretos (`/agentes`).
 
 ---
 
-### 6. **Middleware de validação de schemas comentado**
+### 5. Endpoint de Registro com URL Incorreta
 
-No seu `routes/authRoutes.js`, você importou `validateSchema` do middleware, mas está comentado e não está usando validação das requisições para registro e login.
+No arquivo `routes/authRoutes.js` você definiu:
 
-Validar o body da requisição com schemas (por exemplo, usando Zod ou Joi) é fundamental para garantir que o cliente envie dados corretos e evitar erros no servidor.
-
-**O que fazer:**
-
-- Implemente schemas de validação para as rotas de `/auth/register` e `/auth/login`.
-- Use o middleware para validar o body antes de chamar o controller.
-
----
-
-### 7. **Arquivo INSTRUCTIONS.md incompleto**
-
-Seu arquivo `INSTRUCTIONS.md` está praticamente vazio. Ele precisa conter as informações sobre:
-
-- Como registrar e logar usuários.
-- Exemplo de envio do token JWT no header `Authorization`.
-- Fluxo de autenticação esperado.
-
-Essas informações são importantes para que qualquer pessoa consiga usar sua API e entender o fluxo de segurança.
-
----
-
-## 📚 Recursos recomendados para você
-
-- Para entender melhor a **validação de dados e segurança na autenticação**, recomendo muito assistir esse vídeo, feito pelos meus criadores, que explica bem os conceitos básicos e fundamentais da cibersegurança:  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk
-
-- Para aprender a trabalhar com JWT na prática, veja este vídeo, que explica como gerar, validar e usar tokens JWT:  
-  https://www.youtube.com/watch?v=keS0JWOypIU
-
-- Para entender o uso combinado de **bcrypt e JWT** para autenticação segura, este vídeo é excelente:  
-  https://www.youtube.com/watch?v=L04Ln97AwoY
-
-- Para ajustar e entender melhor a estrutura do seu projeto e como organizar controllers, rotas e repositórios, veja esse vídeo sobre arquitetura MVC em Node.js:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
-
-- Se precisar revisar a configuração do banco com Docker e Knex, este vídeo é muito bom para garantir que tudo está conectado corretamente:  
-  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
-
----
-
-## 📝 Resumo dos principais pontos para focar
-
-- [ ] Corrigir nomes e padronizar campos e tabelas (`usuarios`, `nome`, `senha`) entre migration, repositório e controller.
-- [ ] Implementar validações rigorosas no cadastro de usuários para nome, email e senha (força da senha).
-- [ ] Ajustar resposta do login para retornar `{ acess_token: "token" }` conforme especificação.
-- [ ] Aplicar middleware de autenticação nas rotas sensíveis (`/agentes` e `/casos`).
-- [ ] Corrigir rotas para usar prefixos corretos (`/agentes`).
-- [ ] Implementar validação de schemas nas rotas de autenticação para garantir dados corretos.
-- [ ] Completar o arquivo `INSTRUCTIONS.md` com documentação clara sobre autenticação e uso do token JWT.
-- [ ] Renomear o arquivo do repositório de usuários para `usuariosRepository.js` para seguir a estrutura pedida.
-
----
-
-Alvaro, você está no caminho certo! 🚀 Essas correções vão garantir que sua API esteja segura, robusta e alinhada com as boas práticas de desenvolvimento. Continue assim, revisando cada detalhe e aprimorando seu código. Se precisar, volte aos vídeos que recomendei para consolidar seu aprendizado.
-
-Se precisar de ajuda para implementar qualquer um desses pontos, só chamar! Estou aqui para te ajudar a destravar esse desafio! 💪😉
-
-Abraços e sucesso!  
-Code Buddy 👨‍💻✨
+```js
+router.post("/signUp", authController.signUp);
 ```
+
+Mas no desafio o endpoint correto para registro é:
+
+```
+POST /auth/register
+```
+
+**Por que isso importa?**  
+O endpoint deve seguir a especificação para que as requisições sejam encaminhadas corretamente.
+
+**Como corrigir:**  
+Altere para:
+
+```js
+router.post("/register", authController.signUp);
+```
+
+---
+
+### 6. Logout e Exclusão de Usuários
+
+No código enviado, não encontrei a rota para logout (`POST /auth/logout`) nem para exclusão de usuários (`DELETE /users/:id`).
+
+**Por que isso importa?**  
+Esses endpoints são parte da segurança e gerenciamento de sessão, importantes para a aplicação estar completa e segura.
+
+**Sugestão:**  
+Implemente esses endpoints no `authRoutes.js` e seus respectivos controllers. Para o logout, uma abordagem comum é manter uma blacklist de tokens ou simplesmente o cliente descartar o token.
+
+---
+
+### 7. Endpoint `/usuarios/me` para Retornar Dados do Usuário Logado
+
+Esse endpoint é um bônus importante que você ainda não implementou.
+
+**Sugestão:**  
+Crie uma rota protegida que retorne os dados do usuário obtidos via `req.user` no middleware, para facilitar o frontend e a experiência do usuário.
+
+---
+
+### 8. Mensagens de Erro Personalizadas e Status Codes
+
+Vi que seu `authController` e middleware de autenticação usam um `ApiError`, o que é ótimo para padronizar erros.
+
+Porém, em alguns casos você retorna erros genéricos ou com status 404 para usuário não encontrado no login, quando o desafio pede status 400 para email já em uso no registro, e 401 para senha inválida.
+
+**Dica:**  
+Padronize os códigos HTTP conforme o esperado para cada situação, isso melhora a comunicação da API.
+
+---
+
+## 📚 Recursos para você aprimorar ainda mais
+
+- Para validar dados com Zod e garantir segurança no cadastro:  
+  https://github.com/colinhacks/zod  
+- Para entender melhor autenticação JWT e bcrypt:  
+  [Esse vídeo, feito pelos meus criadores, fala muito bem sobre JWT na prática](https://www.youtube.com/watch?v=keS0JWOypIU)  
+  [Esse vídeo, feito pelos meus criadores, explica o uso do bcrypt e segurança básica](https://www.youtube.com/watch?v=L04Ln97AwoY)  
+- Para estruturar seu projeto com MVC e organização:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s  
+- Para configurar banco de dados com Docker e Knex:  
+  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s  
+
+---
+
+## ✅ Resumo dos principais pontos para focar agora
+
+- [ ] Ajustar nomes: usar `usuarios` no lugar de `users` para tabelas e arquivos (migration e repository).  
+- [ ] Implementar validação rigorosa dos dados do usuário no cadastro (nome, email, senha) com regras de senha fortes.  
+- [ ] Corrigir o endpoint de registro para `/auth/register` e resposta do login para retornar `{ acess_token: "..." }`.  
+- [ ] Aplicar o middleware de autenticação nas rotas `/agentes` e `/casos` para proteger os recursos.  
+- [ ] Garantir que as rotas estejam corretamente prefixadas (`/agentes`, `/casos`, `/auth`).  
+- [ ] Implementar os endpoints de logout e exclusão de usuário.  
+- [ ] Criar o endpoint `/usuarios/me` para retornar dados do usuário autenticado.  
+- [ ] Padronizar mensagens e status codes de erro conforme esperado.  
+
+---
+
+Alvaro, seu projeto já tem uma base muito sólida, e com esses ajustes você vai conseguir entregar uma API segura, bem estruturada e profissional! Continue firme, revisando cada detalhe com calma e testando bastante. Se precisar, volte aos vídeos recomendados para reforçar os conceitos de autenticação e estruturação de projetos.
+
+Você está no caminho certo para se tornar um expert em Node.js com segurança! 💪🚀
+
+Fico aqui torcendo pelo seu sucesso! Qualquer dúvida, é só chamar. 😉
+
+Um abraço,  
+Seu Code Buddy 🤖✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
