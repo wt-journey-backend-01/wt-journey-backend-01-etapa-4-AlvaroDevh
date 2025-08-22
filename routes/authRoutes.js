@@ -81,7 +81,7 @@ router.post("/logout", authController.logout);
  *       401:
  *         description: Token inválido ou ausente
  */
-router.delete("/users/:id", authMiddleware, authController.DELETE);
+router.delete("/users/:id", authController.DELETE);
 
 
 
