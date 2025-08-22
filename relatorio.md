@@ -1,222 +1,301 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 2 créditos restantes para usar o sistema de feedback AI.
+Você tem 9 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para AlvaroDevh:
 
-Nota final: **42.4/100**
+Nota final: **17.8/100**
 
-# Feedback para AlvaroDevh 🚔✨
+```markdown
+# Feedback para AlvaroDevh 🚓✨
 
-Olá, Alvaro! Primeiro, parabéns pelo esforço e pela dedicação em migrar sua API para usar PostgreSQL com Knex.js! 🎉 Vi que você conseguiu implementar várias funcionalidades importantes, incluindo validações, tratamento de erros e até endpoints complexos de filtragem. Isso mostra que você está no caminho certo e tem uma boa noção da arquitetura modular com controllers, repositories e rotas. Mandou bem! 👏👏
+Olá, Alvaro! Primeiro, parabéns por todo o esforço e por ter avançado bastante nessa etapa de segurança e autenticação da sua API! 🎉 Você já tem uma base sólida com as rotas, controllers, repositórios e o uso do Express com PostgreSQL, o que é ótimo para construir uma aplicação robusta.
 
 ---
 
-## Vamos destrinchar juntos o que pode ser melhorado para sua API brilhar ainda mais! 🔍
+## 🎯 O que você mandou muito bem
 
-### 1. **Conexão e Configuração do Banco de Dados**
+- **Estrutura geral do projeto:** Você organizou muito bem os arquivos principais, com controllers, routes, middlewares e utils, o que é essencial para manter o código escalável.
+- **Controllers e Repositórios:** Sua separação entre lógica de negócio (controllers) e acesso ao banco (repositories) está correta e bem feita.
+- **Uso do Knex:** As queries estão bem construídas, e você usa `.returning('*')` para obter os dados após inserções e atualizações, o que é uma boa prática.
+- **Middleware de autenticação:** O `authMiddleware.js` está implementado corretamente para extrair e validar o JWT, adicionando o usuário autenticado no `req.user`.
+- **Endpoints de agentes e casos:** Você implementou as rotas e controllers com validações básicas, tratamento de erros e respostas HTTP adequadas.
+- **Bônus conquistados:** Você já implementou o endpoint `/usuarios/me` para retornar dados do usuário autenticado, além de filtros avançados e buscas por palavras-chave em casos e agentes. Isso mostra que você foi além do básico! 🌟
 
-Um ponto fundamental para que sua API funcione corretamente é a conexão com o PostgreSQL via Knex. Eu analisei seu `knexfile.js` e o arquivo `db/db.js` e eles parecem estar configurados corretamente para o ambiente de desenvolvimento:
+---
+
+## 🔎 Pontos que precisam de atenção para avançar ainda mais
+
+### 1. **Validação e tratamento de erros no cadastro de usuários**
+
+Ao analisar seu `authController.js`, percebi que o seu endpoint de registro (`signUp`) não está validando os campos obrigatórios como nome, email e senha, nem está validando a força da senha conforme o requisito (mínimo 8 caracteres, letras maiúsculas, minúsculas, números e caracteres especiais). Isso faz com que o sistema aceite dados inválidos e não retorne erro 400 quando deveria.
+
+Além disso, você está usando nomes diferentes para os campos no controller e no banco:
+
+- No banco (migration), o campo é `nome`, mas no controller você usa `name`.
+- No banco e no controller, o campo da senha é `senha` e `password`, respectivamente.
+
+Esse desalinhamento pode causar problemas na hora de inserir e consultar dados.
+
+**Trecho com problema:**
 
 ```js
-// knexfile.js - trecho da conexão
-development: {
-  client: 'pg',
-  connection: {
-    host: '127.0.0.1',
-    port: 5432,
-    user: process.env.POSTGRES_USER,
-    password: process.env.POSTGRES_PASSWORD,
-    database: process.env.POSTGRES_DB,
-  },
-  migrations: { directory: './db/migrations' },
-  seeds: { directory: './db/seeds' },
+const signUp = async (req, res, next) => {
+  try {
+    const { name, email, password } = req.body; // Usa "name" aqui
+    // Não há validações para nome vazio, email vazio ou senha fraca
+    // ...
+    const newUser = await userRepository.insertUser({
+      name,
+      email,
+      password: hashedPassword,
+    });
+    // ...
+  } catch (error) {
+    next(new ApiError("Error creating user", 400, error.message));
+  }
+};
+```
+
+**O que fazer:**
+
+- Padronize os nomes dos campos para `nome`, `email` e `senha` para manter coerência com o banco e front.
+- Antes de tentar criar o usuário, valide:
+  - Se `nome`, `email` e `senha` estão presentes e não vazios.
+  - Se a senha atende os critérios de segurança (regex para validar).
+  - Se não há campos extras inesperados.
+- Retorne erro 400 com mensagens claras para cada caso de validação falha.
+
+**Exemplo simples de validação de senha:**
+
+```js
+function validarSenha(senha) {
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  return regex.test(senha);
 }
 ```
 
+**Sugestão de validação no `signUp`:**
+
 ```js
-// db/db.js
-const knexConfig = require('../knexfile');
-const knex = require('knex'); 
+const signUp = async (req, res, next) => {
+  try {
+    const { nome, email, senha } = req.body;
 
-const nodeEnv = process.env.NODE_ENV || 'development';
-const config = knexConfig[nodeEnv]; 
+    if (!nome || nome.trim() === "") {
+      return next(new ApiError("Nome é obrigatório", 400, { nome: "Nome é obrigatório" }));
+    }
+    if (!email || email.trim() === "") {
+      return next(new ApiError("Email é obrigatório", 400, { email: "Email é obrigatório" }));
+    }
+    if (!senha || !validarSenha(senha)) {
+      return next(new ApiError("Senha inválida", 400, { senha: "Senha deve ter 8+ caracteres, com maiúsculas, minúsculas, números e caracteres especiais" }));
+    }
 
-const db = knex(config);
+    // Verificar se email já existe
+    const user = await userRepository.findUserByEmail(email);
+    if (user) {
+      return next(new ApiError("Email já em uso", 400, { email: "Email já em uso" }));
+    }
 
-module.exports = db;
+    const salt = await bcrypt.genSalt(parseInt(process.env.SALT_ROUNDS) || 10);
+    const hashedPassword = await bcrypt.hash(senha, salt);
+
+    const newUser = await userRepository.insertUser({
+      nome,
+      email,
+      senha: hashedPassword,
+    });
+
+    res.status(201).json({
+      message: "Usuário criado com sucesso",
+      user: newUser,
+    });
+  } catch (error) {
+    next(new ApiError("Erro ao criar usuário", 400, error.message));
+  }
+};
 ```
-
-**Porém, para garantir que a conexão está funcionando, certifique-se de:**
-
-- Ter criado o arquivo `.env` com as variáveis `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` corretamente preenchidas. Sem isso, o Knex não vai conseguir conectar.
-- Ter rodado o container do PostgreSQL via Docker, conforme seu `docker-compose.yml`.
-- Ter executado as migrations e seeds para criar as tabelas e popular dados iniciais.
-
-Se esses passos não foram feitos ou apresentaram algum erro, sua API não conseguirá acessar os dados, o que impacta todas as operações CRUD.
-
-👉 Recomendo fortemente este vídeo para entender melhor a configuração do Docker com PostgreSQL e a conexão via Knex:  
-[Configuração de Banco de Dados com Docker e Knex](http://googleusercontent.com/youtube.com/docker-postgresql-node)  
-E para aprofundar em migrations e seeds:  
-[Documentação oficial do Knex - Migrations](https://knexjs.org/guide/migrations.html) e  
-[Vídeo sobre seeds com Knex](http://googleusercontent.com/youtube.com/knex-seeds)
 
 ---
 
-### 2. **Estrutura do Projeto**
+### 2. **Repositório de usuários está com nome diferente e ausente na estrutura**
 
-Sua estrutura está praticamente alinhada com o esperado, parabéns! 👏 Você organizou bem os arquivos em `controllers`, `repositories`, `routes`, `db` e `utils`. Isso facilita a manutenção e escalabilidade do projeto.
+No seu projeto, você tem um arquivo chamado `repositories/userRepository.js`, mas a estrutura esperada é `repositories/usuariosRepository.js`.
 
-Só fique atento para que:
-
-- O arquivo `db.js` esteja dentro da pasta `db/` (o que está correto).
-- As migrations estejam na pasta `db/migrations/` e os seeds em `db/seeds/` (também correto).
-- As rotas estejam devidamente importadas e usadas no `server.js` com o `app.use()`.
-
-No seu `server.js` você fez assim:
+Além disso, no seu `authController.js` você importa `userRepository`:
 
 ```js
-app.use(casosRoutes);
-app.use(agentesRoutes);
+import userRepository from "../repositories/userRepository.js";
 ```
 
-**Aqui, para garantir que as rotas estejam registradas corretamente, é recomendável prefixá-las:**
+Mas no seu projeto, o arquivo `usuariosRepository.js` não existe, e o arquivo `userRepository.js` está presente. Isso gera inconsistência com a estrutura solicitada e pode causar confusão.
 
-```js
-app.use('/casos', casosRoutes);
-app.use('/agentes', agentesRoutes);
-```
+**O que fazer:**
 
-Isso evita conflitos de rotas e deixa o código mais claro. Caso suas rotas dentro dos arquivos já estejam com o prefixo `/casos` e `/agentes` (como vi em `routes/casosRoutes.js`), isso pode não ser obrigatório, mas é uma boa prática.
+- Renomeie o arquivo `userRepository.js` para `usuariosRepository.js` para seguir o padrão solicitado.
+- Atualize as importações para usar `usuariosRepository`.
+- Garanta que o nome do objeto exportado seja coerente.
 
 ---
 
-### 3. **Validação e Tratamento de Erros**
+### 3. **Nomes dos campos no banco e no código**
 
-Você implementou validações importantes no payload e tratamento de erros com status codes corretos (400, 404), o que é excelente! Por exemplo, no `agentesController.js`:
+No seu migration, a tabela de usuários foi criada com os campos:
 
 ```js
-if (!isValidDate(dataDeIncorporacao)) {
-    return res.status(400).json({ message: "dataDeIncorporacao inválida ou no futuro." });
+await knex.schema.createTable("users", (table) => {
+  table.increments("id").primary();
+  table.string("nome").notNullable();
+  table.string("email").unique().notNullable();
+  table.string("senha").notNullable();
+});
+```
+
+Observe que o nome da tabela é `"users"`, mas o requisito pedia a tabela `"usuarios"`.
+
+Além disso, o campo `senha` está correto, mas no controller você está usando `password`.
+
+**O que fazer:**
+
+- Alinhe o nome da tabela para `"usuarios"` para seguir o requisito.
+- Padronize os nomes dos campos para `nome`, `email` e `senha` em todo o código.
+- Atualize o repositório para usar a tabela correta.
+
+---
+
+### 4. **Resposta do login não está no formato esperado**
+
+O requisito pede que o endpoint de login retorne o token JWT no formato:
+
+```json
+{
+  "acess_token": "token aqui"
 }
 ```
 
-E também verifica se o agente existe antes de atualizar ou deletar.
-
-Porém, notei que em alguns endpoints você realiza filtros e buscas no controller, por exemplo em `listarCasos`:
+Mas no seu `authController.js`, você está retornando:
 
 ```js
-let resultado =  await casosRepository.listarCasosComFiltros({ status, agente_id, q });
-
-if (status) {
-    resultado = resultado.filter(c => c.status.toLowerCase() === status.toLowerCase());
-}
-
-if (agente_id) {
-    resultado = resultado.filter(c => c.agente_id === agente_id);
-}
-
-if (q) {
-    const termo = q.toLowerCase();
-    resultado = resultado.filter(c =>
-        c.titulo.toLowerCase().includes(termo) ||
-        c.descricao.toLowerCase().includes(termo)
-    );
-}
+res.status(200).json({
+  message: "User logged in successfully",
+  token,
+});
 ```
 
-Mas seu `casosRepository.listarCasosComFiltros` já faz filtros no banco usando Knex, o que é mais eficiente. Então, esses filtros extras no controller são redundantes e podem causar inconsistência.
+Ou seja, o campo está nomeado como `token` e não `acess_token`, e tem uma mensagem extra.
 
-**Sugestão:** Remova os filtros no controller e deixe o repository fazer o trabalho todo, assim:
+**O que fazer:**
+
+- Ajuste a resposta do login para:
 
 ```js
-async function listarCasos(req, res) {
-    const { status, agente_id, q } = req.query;
-
-    const resultado = await casosRepository.listarCasosComFiltros({ status, agente_id, q });
-
-    res.status(200).json(resultado);
-}
+res.status(200).json({
+  acess_token: token,
+});
 ```
 
-Isso melhora performance e mantém a responsabilidade clara.
+Assim você segue exatamente o que foi pedido, garantindo compatibilidade com clientes e testes.
 
 ---
 
-### 4. **Retorno dos Status Codes e Dados**
+### 5. **Proteção das rotas com middleware de autenticação**
 
-Em alguns pontos, seu código retorna o objeto enviado no corpo da requisição em vez do objeto criado/atualizado do banco. Por exemplo, no `cadastrarCaso`:
+No seu `server.js`, você monta as rotas assim:
 
 ```js
-await casosRepository.cadastrarCaso(novoCaso); 
-res.status(201).json(novoCaso);
+app.use("/casos", casosRoutes);
+app.use( agentesRoutes);
+app.use("/auth", authRoutes);
 ```
 
-Aqui, o ideal é retornar o registro criado retornado pelo banco, que pode ter um ID gerado automaticamente:
+Note que a rota de agentes não tem prefixo, e nenhuma rota está protegida com o middleware de autenticação.
+
+**O que fazer:**
+
+- Corrija a rota de agentes para ter prefixo `/agentes`:
 
 ```js
-const casoCriado = await casosRepository.cadastrarCaso(novoCaso);
-res.status(201).json(casoCriado);
+app.use("/agentes", agentesRoutes);
 ```
 
-Assim, o cliente recebe exatamente o que foi inserido no banco, incluindo o ID.
-
----
-
-### 5. **Migrations e Seeds**
-
-Sua migration está correta e cria as tabelas com os campos necessários, inclusive com a foreign key `agente_id` na tabela `casos`:
+- Importe e aplique o middleware de autenticação nas rotas que precisam de proteção, por exemplo:
 
 ```js
-table.integer("agente_id").unsigned().references("id").inTable("agentes").onDelete("CASCADE");
+import authMiddleware from "./middlewares/authMiddleware.js";
+
+app.use("/agentes", authMiddleware, agentesRoutes);
+app.use("/casos", authMiddleware, casosRoutes);
 ```
 
-Os seeds também estão bem feitos, populando agentes antes dos casos, o que é essencial para manter a integridade referencial.
-
-Só certifique-se de rodar as migrations e seeds na ordem correta:
-
-```bash
-npx knex migrate:latest
-npx knex seed:run
-```
+Assim, você garante que apenas usuários autenticados possam acessar esses recursos.
 
 ---
 
-### 6. **Detalhes Finais e Boas Práticas**
+### 6. **Middleware de validação de schemas comentado**
 
-- No seu `server.js`, a ordem dos middlewares está boa, mas o `errorHandler` deve vir após todas as rotas, o que você fez corretamente.
-- Verifique se o middleware `errorHandler` está capturando e respondendo erros de forma clara para o cliente.
-- No `routes/agentesRoutes.js` e `routes/casosRoutes.js`, os comentários Swagger estão bem detalhados, parabéns! Isso ajuda muito na documentação da API.
-- Para IDs, no controller você converte para `Number` e verifica `isNaN`, o que é ótimo para evitar erros.
+No seu `routes/authRoutes.js`, você importou `validateSchema` do middleware, mas está comentado e não está usando validação das requisições para registro e login.
 
----
+Validar o body da requisição com schemas (por exemplo, usando Zod ou Joi) é fundamental para garantir que o cliente envie dados corretos e evitar erros no servidor.
 
-## Recursos para você avançar ainda mais 🚀
+**O que fazer:**
 
-- [Knex.js - Query Builder](https://knexjs.org/guide/query-builder.html) — para dominar as queries e evitar filtros redundantes no controller.
-- [Validação de Dados em APIs Node.js/Express](https://youtu.be/yNDCRAz7CM8?si=Lh5u3j27j_a4w3A_) — para aprimorar ainda mais suas validações e mensagens de erro.
-- [HTTP Status Codes - MDN](https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status/400) e [404](https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status/404) — para entender o uso correto dos códigos na API.
-- [Arquitetura MVC para Node.js](https://youtu.be/bGN_xNc4A1k?si=Nj38J_8RpgsdQ-QH) — para reforçar a organização do seu projeto.
+- Implemente schemas de validação para as rotas de `/auth/register` e `/auth/login`.
+- Use o middleware para validar o body antes de chamar o controller.
 
 ---
 
-## Resumo dos principais pontos para focar 🔑
+### 7. **Arquivo INSTRUCTIONS.md incompleto**
 
-- ✅ Confirme que o `.env` está configurado e o banco PostgreSQL está rodando via Docker.
-- ✅ Execute corretamente as migrations e seeds para garantir que as tabelas e dados existam.
-- ⚠️ Ajuste os filtros no controller para delegar toda a filtragem ao repository/Knex.
-- ⚠️ Retorne sempre os dados reais criados/atualizados do banco, não apenas o payload recebido.
-- ⚠️ Considere prefixar as rotas no `server.js` para melhor organização.
-- ⚠️ Continue aprimorando a validação e tratamento de erros para garantir respostas claras e corretas.
+Seu arquivo `INSTRUCTIONS.md` está praticamente vazio. Ele precisa conter as informações sobre:
+
+- Como registrar e logar usuários.
+- Exemplo de envio do token JWT no header `Authorization`.
+- Fluxo de autenticação esperado.
+
+Essas informações são importantes para que qualquer pessoa consiga usar sua API e entender o fluxo de segurança.
 
 ---
 
-Alvaro, você já tem uma base muito boa e estruturada! Com essas melhorias, sua API vai ficar mais robusta, performática e alinhada com as boas práticas do mercado. Continue firme, aprendendo e refatorando seu código — isso é o que torna um desenvolvedor excepcional! 🚀💪
+## 📚 Recursos recomendados para você
 
-Se precisar de ajuda para qualquer um dos pontos, pode contar comigo! 😉
+- Para entender melhor a **validação de dados e segurança na autenticação**, recomendo muito assistir esse vídeo, feito pelos meus criadores, que explica bem os conceitos básicos e fundamentais da cibersegurança:  
+  https://www.youtube.com/watch?v=Q4LQOfYwujk
+
+- Para aprender a trabalhar com JWT na prática, veja este vídeo, que explica como gerar, validar e usar tokens JWT:  
+  https://www.youtube.com/watch?v=keS0JWOypIU
+
+- Para entender o uso combinado de **bcrypt e JWT** para autenticação segura, este vídeo é excelente:  
+  https://www.youtube.com/watch?v=L04Ln97AwoY
+
+- Para ajustar e entender melhor a estrutura do seu projeto e como organizar controllers, rotas e repositórios, veja esse vídeo sobre arquitetura MVC em Node.js:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+
+- Se precisar revisar a configuração do banco com Docker e Knex, este vídeo é muito bom para garantir que tudo está conectado corretamente:  
+  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
+
+---
+
+## 📝 Resumo dos principais pontos para focar
+
+- [ ] Corrigir nomes e padronizar campos e tabelas (`usuarios`, `nome`, `senha`) entre migration, repositório e controller.
+- [ ] Implementar validações rigorosas no cadastro de usuários para nome, email e senha (força da senha).
+- [ ] Ajustar resposta do login para retornar `{ acess_token: "token" }` conforme especificação.
+- [ ] Aplicar middleware de autenticação nas rotas sensíveis (`/agentes` e `/casos`).
+- [ ] Corrigir rotas para usar prefixos corretos (`/agentes`).
+- [ ] Implementar validação de schemas nas rotas de autenticação para garantir dados corretos.
+- [ ] Completar o arquivo `INSTRUCTIONS.md` com documentação clara sobre autenticação e uso do token JWT.
+- [ ] Renomear o arquivo do repositório de usuários para `usuariosRepository.js` para seguir a estrutura pedida.
+
+---
+
+Alvaro, você está no caminho certo! 🚀 Essas correções vão garantir que sua API esteja segura, robusta e alinhada com as boas práticas de desenvolvimento. Continue assim, revisando cada detalhe e aprimorando seu código. Se precisar, volte aos vídeos que recomendei para consolidar seu aprendizado.
+
+Se precisar de ajuda para implementar qualquer um desses pontos, só chamar! Estou aqui para te ajudar a destravar esse desafio! 💪😉
 
 Abraços e sucesso!  
-Seu Code Buddy 🤖❤️
+Code Buddy 👨‍💻✨
+```
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
