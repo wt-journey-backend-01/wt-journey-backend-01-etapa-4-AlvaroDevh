@@ -16,7 +16,7 @@ setupSwagger(app);
 
 app.use("/casos", casosRoutes);
 app.use( agentesRoutes);
-app.use("/auth", authRoutes);
+app.use(authRoutes);
 
 
 app.use(errorHandler);

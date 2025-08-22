@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/errorHandler.js";
 
-// Secret key for JWT
 const SECRET = process.env.JWT_SECRET || "secret";
 
 const getProfile = async (req, res, next) => {
@@ -22,7 +21,7 @@ const getProfile = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, senha } = req.body;
 
     const user = await userRepository.findUserByEmail(email);
 
@@ -30,14 +29,14 @@ const login = async (req, res, next) => {
       return next(new ApiError("User not found", 404, { email: "User not found" }));
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const issenhaValid = await bcrypt.compare(senha, user.senha);
 
-    if (!isPasswordValid) {
-      return next(new ApiError("Invalid password", 401, { password: "Invalid password" }));
+    if (!issenhaValid) {
+      return next(new ApiError("Invalid senha", 401, { senha: "Invalid senha" }));
     }
 
     const token = jwt.sign(
-      { id: user.id, user: user.name, email: user.email },
+      { id: user.id, user: user.nome, email: user.email },
       SECRET,
       { expiresIn: "1h" }
     );
@@ -53,21 +52,21 @@ const login = async (req, res, next) => {
 
 const signUp = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { nome, email, senha } = req.body;
 
     const user = await userRepository.findUserByEmail(email);
 
     if (user) {
-      return next(new ApiError("User already exists", 400, { email: "User already exists" }));
+      return next(new Error("User already exists"));
     }
 
-    const salt = await bcrypt.genSalt(parseInt(process.env.SALT_ROUNDS) || 10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcrypt.genSalt(10);
+    const hashedsenha = await bcrypt.hash(senha, salt);
 
     const newUser = await userRepository.insertUser({
-      name,
+      nome,
       email,
-      password: hashedPassword,
+      senha: hashedsenha,
     });
 
     res.status(201).json({
@@ -75,9 +74,10 @@ const signUp = async (req, res, next) => {
       user: newUser,
     });
   } catch (error) {
-    next(new ApiError("Error creating user", 400, error.message));
+    next(error);
   }
 };
+
 
 export default {
   getProfile,

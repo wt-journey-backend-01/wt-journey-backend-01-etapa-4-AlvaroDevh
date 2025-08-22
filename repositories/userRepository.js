@@ -9,8 +9,15 @@ export const findUserById = async (id) => {
 };
 
 export const insertUser = async (user) => {
-  const [id] = await db("users").insert(user).returning("id");
-  return findUserById(id);
+  const [row] = await db("users")
+    .insert({
+      nome: user.nome,
+      email: user.email,
+      senha: user.senha
+    })
+    .returning("id");
+
+  return findUserById(row.id); 
 };
 
 export default {

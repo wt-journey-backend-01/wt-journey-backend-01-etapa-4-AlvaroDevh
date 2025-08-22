@@ -28,7 +28,7 @@ const router = express.Router();
  *       201:
  *         description: Usuário criado com sucesso
  */
-router.post("/register", authController.signUp);
+router.post("/signUp", authController.signUp);
 
 /**
  * @swagger
