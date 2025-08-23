@@ -30,7 +30,7 @@ import agentesController from "../controllers/agentesController.js";
  *       200:
  *         description: "Lista de agentes retornada com sucesso"
  */
-router.get("/agentes", agentesController.listarAgentes);
+router.get("/", agentesController.listarAgentes);
 
 /**
  * @swagger
@@ -51,7 +51,7 @@ router.get("/agentes", agentesController.listarAgentes);
  *       404:
  *         description: "Agente não encontrado"
  */
-router.get("/agentes/:id", agentesController.buscarAgentePorId);
+router.get("/:id", agentesController.buscarAgentePorId);
 
 /**
  * @swagger
@@ -84,7 +84,7 @@ router.get("/agentes/:id", agentesController.buscarAgentePorId);
  *       400:
  *         description: "Erro de validação"
  */
-router.post("/agentes", agentesController.cadastrarAgente);
+router.post("/", agentesController.cadastrarAgente);
 
 /**
  * @swagger
@@ -125,7 +125,7 @@ router.post("/agentes", agentesController.cadastrarAgente);
  *       404:
  *         description: "Agente não encontrado"
  */
-router.put("/agentes/:id", agentesController.atualizarAgente);
+router.put("/:id", agentesController.atualizarAgente);
 
 /**
  * @swagger
@@ -162,7 +162,7 @@ router.put("/agentes/:id", agentesController.atualizarAgente);
  *       404:
  *         description: "Agente não encontrado"
  */
-router.patch("/agentes/:id", agentesController.atualizarParcialAgente);
+router.patch("/:id", agentesController.atualizarParcialAgente);
 
 /**
  * @swagger

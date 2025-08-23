@@ -1,6 +1,7 @@
 import express from "express";
 import authController from "../controllers/authController.js";
 import validateSchema from "../middlewares/authMiddleware.js";
+import authMiddleware from "../middlewares/authMiddleware.js";
 //import { signUpSchema, loginSchema } from "../schemas/authSchema.js";
 
 const router = express.Router();
@@ -28,7 +29,7 @@ const router = express.Router();
  *       201:
  *         description: Usuário criado com sucesso
  */
-router.post("/register", authController.register);
+router.post('/register', authController.register);
 
 /**
  * @swagger
@@ -46,7 +47,7 @@ router.post("/register", authController.register);
  *       200:
  *         description: Login realizado com sucesso, retorna token JWT
  */
-router.post("/login", authController.login);
+router.post('/login', authController.login);
 
 /**
  * @swagger
@@ -58,7 +59,7 @@ router.post("/login", authController.login);
  *       200:
  *         description: Logout realizado com sucesso
  */
-router.post("/logout", authController.logout);
+router.post('/logout', authController.logout);
 
 /**
  * @swagger
@@ -81,8 +82,8 @@ router.post("/logout", authController.logout);
  *       401:
  *         description: Token inválido ou ausente
  */
-router.delete("/users/:id", authController.DELETE);
+router.delete('/usuarios/:id', authMiddleware, authController.DELETE);
 
-
+router.get("/usuarios/me", authMiddleware, authController.getProfile);
 
 export default router;

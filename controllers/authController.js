@@ -39,28 +39,24 @@ const login = async (req, res, next) => {
     const user = await userRepository.findUserByEmail(email);
 
     if (!user) {
-      return next(new ApiError("User not found", 404, { email: "User not found" }));
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const issenhaValid = await bcrypt.compare(senha, user.senha);
-
-    if (!issenhaValid) {
-      return next(new ApiError("Invalid senha", 401, { senha: "Invalid senha" }));
+    const isSenhaValid = await bcrypt.compare(senha, user.senha);
+    if (!isSenhaValid) {
+      return res.status(401).json({ error: "Invalid senha" });
     }
 
     const token = jwt.sign(
-      { id: user.id, user: user.nome, email: user.email },
+      { id: user.id, nome: user.nome, email: user.email },
       SECRET,
       { expiresIn: "1h" }
     );
 
-   res.status(200).json({
-      acess_token: token,
-    });
+    return res.status(200).json({ access_token: token });
   } catch (error) {
-     error = new Error("User not found");
-    error.status = 404;
-    next(error);
+    console.error("Erro no login:", error);
+    return res.status(500).json({ error: "Erro interno no servidor" });
   }
 };
 
@@ -71,8 +67,8 @@ const register = async (req, res, next) => {
     const user = await userRepository.findUserByEmail(email);
 
     if (user) {
-      return next(new Error("User already exists"));
-    }
+    return res.status(400).json({ message: "Email já está em uso" });
+  }
 
     const salt = await bcrypt.genSalt(10);
     const hashedSenha = await bcrypt.hash(senha, salt);
@@ -88,6 +84,9 @@ const register = async (req, res, next) => {
       user: newUser,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.errors });
+    }
     next(error);
   }
 };

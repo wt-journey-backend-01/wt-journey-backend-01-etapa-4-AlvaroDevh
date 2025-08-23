@@ -2,6 +2,8 @@ import express from "express";
 const app = express();
 const port = 3000;
 
+import authMiddleware from "./middlewares/authMiddleware.js";
+
 import agentesRoutes from "./routes/agentesRoutes.js";
 import casosRoutes from "./routes/casosRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -15,9 +17,9 @@ app.use(express.json());
 
 setupSwagger(app);
 
-app.use("/casos", casosRoutes);
-app.use( agentesRoutes);
-app.use(authRoutes);
+app.use("/casos",  authMiddleware , casosRoutes);
+app.use( "/agente", authMiddleware, agentesRoutes);
+app.use("/auth", authRoutes);
 
 
 app.use(errorHandler);

@@ -21,7 +21,7 @@ export const insertUser = async (user) => {
 };
 
 export const deleteUser = async (id) => {
-  return db("users").where({ id }).del();
+  return db("usuarios").where({ id }).del();
 };
 
 export default {
