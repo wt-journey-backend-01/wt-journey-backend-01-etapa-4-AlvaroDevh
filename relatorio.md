@@ -1,243 +1,329 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 6 créditos restantes para usar o sistema de feedback AI.
+Você tem 9 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para AlvaroDevh:
 
-Nota final: **45.6/100**
+Nota final: **36.2/100**
 
-# Feedback para AlvaroDevh 🚀
+Olá, AlvaroDevh! 👋🚀
 
-Olá, Alvaro! Antes de mais nada, parabéns pelo esforço e pela entrega desse projeto tão desafiador! 🎉 Você estruturou muito bem a aplicação, usou boas práticas de organização e implementou funcionalidades importantes, como autenticação com JWT, hashing de senha com bcrypt, e proteção das rotas sensíveis. Além disso, você conseguiu fazer funcionar o registro, login, logout e exclusão de usuários, e proteger as rotas de agentes e casos com middleware. Isso já é uma grande conquista! 👏
+Primeiramente, parabéns pelo esforço e pelo que você já conseguiu implementar! 🎉 Você conseguiu fazer a parte de usuários funcionar bem, incluindo o registro, login, logout e deleção de usuários com JWT, o que é uma base super importante para qualquer sistema seguro. Além disso, você organizou o projeto com uma estrutura clara, utilizando controllers, repositories, middlewares e rotas, o que é ótimo para manter o código escalável e limpo.
 
----
-
-## O que está muito bom 👍
-
-- **Estrutura do projeto**: Você organizou o projeto conforme o esperado, com pastas bem divididas (`controllers/`, `repositories/`, `routes/`, `middlewares/`, `db/`, `utils/`). Isso facilita muito a manutenção e escalabilidade.
-- **Autenticação JWT**: O middleware `authMiddleware.js` está implementado corretamente, verificando o token no header Authorization e adicionando o usuário autenticado ao `req.user`.
-- **Hashing de senha**: Você usou `bcryptjs` para gerar o hash da senha no registro, e comparar a senha no login.
-- **Endpoints de usuários**: Registro, login, logout e exclusão de usuário estão implementados e funcionais.
-- **Documentação**: O `INSTRUCTIONS.md` está bem detalhado, explicando como configurar o ambiente, rodar o banco com Docker, executar migrations/seeds, e usar as rotas de autenticação.
-- **Boas mensagens de erro**: Você usa mensagens claras para erros de validação, autenticação e recursos não encontrados.
+Também vi que você implementou os bônus de forma parcial, como o endpoint `/usuarios/me` para retornar o perfil do usuário autenticado, que passou nos testes bônus — isso mostra que você está indo além do básico, parabéns! 🌟
 
 ---
 
-## Pontos importantes para melhorar e que impactam diretamente a funcionalidade e segurança 🚨
+### 🚨 Agora, vamos entender juntos onde seu código precisa de ajustes para destravar os testes que falharam e melhorar ainda mais sua aplicação.
 
-### 1. Validação de campos extras no registro de usuário
+---
 
-Você usa o `zod` para validar o payload no registro (`authController.js`), o que é ótimo! Porém, percebi que o esquema `signUpSchema` não está configurado para **recusar campos extras** além dos esperados (`nome`, `email`, `senha`). Isso faz com que, se o cliente enviar um campo extra no JSON, o servidor aceite e crie o usuário mesmo assim, o que não é seguro nem correto.
+## 1. Testes que falharam — O que eles significam e por que podem estar falhando?
 
-**Por que isso é importante?**  
-Permitir campos extras pode abrir brechas para dados inesperados ou ataques. Além disso, o desafio pede que, se houver campo extra, retorne erro 400.
+Você teve falhas generalizadas nos testes relacionados a **Agentes** e **Casos**, especialmente:
 
-**Onde corrigir?**  
-No seu `signUpSchema`, você pode usar o método `.strict()` do Zod para rejeitar qualquer campo extra:
+- Criação, listagem, busca, atualização (PUT e PATCH) e remoção de agentes e casos.
+- Falhas de status codes esperados, como 400 para payload inválido, 401 para falta de token JWT e 404 para IDs inválidos ou inexistentes.
+- Falha em proteger rotas com autenticação JWT (testes 401).
+- Falhas em filtros e buscas complexas nos casos e agentes (testes bônus que falharam).
+
+Esses testes indicam que, apesar da estrutura estar correta, existem problemas fundamentais em como você está tratando:
+
+- **Validação dos dados nas rotas de agentes e casos (payloads, IDs).**
+- **Proteção das rotas com autenticação JWT.**
+- **Respostas com status codes corretos e mensagens adequadas.**
+- **Implementação completa dos filtros e buscas esperadas.**
+
+---
+
+## 2. Análise detalhada dos pontos críticos que causaram as falhas
+
+### 2.1. Falhas nas rotas de Agentes e Casos — status 401 (Unauthorized)
+
+Você aplicou corretamente o middleware `authMiddleware` nas rotas `/agentes` e `/casos` no `server.js`:
 
 ```js
-const signUpSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
-  email: z.string().email("Email inválido"),
-  senha: z.string()
-    .min(8, "Senha deve ter pelo menos 8 caracteres")
-    .regex(/[a-z]/, "Senha deve conter letra minúscula")
-    .regex(/[A-Z]/, "Senha deve conter letra maiúscula")
-    .regex(/[0-9]/, "Senha deve conter número")
-    .regex(/[\W_]/, "Senha deve conter caractere especial"),
-}).strict(); // <--- aqui!
+app.use("/casos",  authMiddleware , casosRoutes);
+app.use("/agentes", authMiddleware, agentesRoutes);
 ```
 
-Assim, se o cliente enviar algo como `{ nome: "João", email: "joao@email.com", senha: "Senha123!", idade: 30 }`, o Zod vai rejeitar e você poderá retornar erro 400 com uma mensagem clara.
+**Porém, os testes indicam que o token JWT não está sendo exigido corretamente em todas as rotas, ou o middleware não está bloqueando requisições sem token.**
 
-**Recurso recomendado:**  
-Esse vídeo, feito pelos meus criadores, fala muito bem sobre validação e segurança na autenticação:  
-https://www.youtube.com/watch?v=Q4LQOfYwujk
+- Seu middleware `authMiddleware.js` parece correto, ele verifica o header `Authorization` e valida o token.
+- Verifique se o token está sendo passado corretamente nos testes (mas isso é externo).
+- Um ponto importante: no arquivo `routes/authRoutes.js`, você importou `validateSchema` do `authMiddleware.js`, mas não está usando essa validação, e isso pode indicar confusão com middlewares.
+
+**Dica:** Garanta que o middleware esteja aplicado em todas as rotas protegidas e que o token enviado seja válido e no formato correto (`Bearer <token>`). Além disso, revise se você não está confundindo middlewares importados com nomes diferentes.
 
 ---
 
-### 2. Inconsistência no formato do token JWT retornado no login
+### 2.2. Falhas nos status 400 para payload inválido em Agentes e Casos
 
-No seu `authController.login`, você retorna o token assim:
+Nos controllers de agentes e casos você tem validações básicas, mas:
+
+- Nos testes, espera-se que payloads com campos faltantes ou com formato errado retornem 400.
+- Por exemplo, no `cadastrarAgente`:
 
 ```js
-return res.status(200).json({ access_token: token });
-```
-
-Porém, no `INSTRUCTIONS.md` e nas orientações do desafio, o token deve ser retornado no campo chamado exatamente `acess_token` (com "c" só uma vez, "acess_token"):
-
-```json
-{
-  "acess_token": "token aqui"
+if (!isValidDate(dataDeIncorporacao)) {
+    return res.status(400).json({ message: "dataDeIncorporacao inválida ou no futuro." });
+}
+if (!nome || nome.trim() === "") {
+    return res.status(400).json({ message: "Nome é obrigatório." });
+}
+const cargosValidos = ["inspetor", "delegado"];
+if (!cargo || !cargosValidos.includes(cargo.toLowerCase())) {
+    return res.status(400).json({ message: "Cargo inválido ou obrigatório. Use 'inspetor' ou 'delegado'." });
 }
 ```
 
-Essa pequena diferença de nome pode causar falhas em clientes que esperam o campo `acess_token`. Além disso, seu código está correto em retornar `access_token` (que é mais padrão), mas o desafio exige o nome `acess_token`.
+Isso está correto, mas pode ser que:
 
-**Como corrigir?**
+- Você não está validando o tipo e formato dos dados com a profundidade que os testes esperam.
+- Você não está usando schemas de validação (como Zod, que usou no authController) para agentes e casos, o que facilitaria a validação e evitaria erros.
 
-Altere para:
+**Sugestão:** Use uma biblioteca de validação (ex: Zod) para validar os schemas dos agentes e casos, garantindo que os dados estejam completos e corretos antes de enviar para o banco.
+
+---
+
+### 2.3. Falhas 404 para IDs inválidos ou inexistentes
+
+Nos controllers, você verifica se o ID é um número:
+
+```js
+const id = Number(req.params.id);
+if (isNaN(id)) {
+  return res.status(400).json({ message: "ID inválido." });
+}
+```
+
+Mas os testes esperam que:
+
+- Se o ID for inválido (não numérico), retorne 400 (ok).
+- Se o ID for numérico, mas não existir no banco, retorne 404.
+
+Você faz isso corretamente na maior parte do código, porém:
+
+- Em alguns métodos, como `removerAgente`, você não verifica se o ID é válido antes de tentar deletar.
+- Isso pode causar erros ou comportamento inesperado.
+
+**Sugestão:** Padronize sempre essa verificação de ID no início dos controllers que recebem `req.params.id`.
+
+---
+
+### 2.4. Falhas na criação e busca de usuários — inconsistência no token retornado no login
+
+No seu `authController.js`, o login retorna o token assim:
 
 ```js
 return res.status(200).json({ acess_token: token });
 ```
 
-Assim, você segue o padrão esperado pelo desafio e evita erros de incompatibilidade.
+Mas no `INSTRUCTIONS.md` e nos testes, o token esperado é retornado com a chave `access_token` (com "c" e "s" invertidos).
 
----
+**Isso é um problema fundamental que pode invalidar o teste de login e consequentemente os testes que dependem do token.**
 
-### 3. Endpoint para deletar usuário com rota incorreta
-
-No arquivo `routes/authRoutes.js`, você declarou a rota de exclusão de usuário assim:
+**Correção simples:**
 
 ```js
-router.delete('/usuarios/:id', authMiddleware, authController.DELETE);
+return res.status(200).json({ access_token: token });
 ```
 
-Mas no README e nas instruções, a rota esperada para deletar usuário é:
+Esse detalhe é crucial para o funcionamento correto da autenticação.
 
-```
-DELETE /users/:id
-```
+---
 
-Ou seja, o prefixo `/users` e não `/usuarios`.
+### 2.5. Repositório de usuários — problema ao retornar usuário criado
 
-Além disso, no seu controller, você chama a função `DELETE` (em maiúsculas), que é um nome confuso para uma função. O ideal é usar nomes como `deleteUser`.
-
-**Por que isso importa?**  
-Se o cliente chamar `/users/:id` e a rota não existir, vai receber erro 404. Para seguir o padrão e garantir que as rotas estejam corretas, você deve alinhar as rotas com o que foi definido.
-
-**Como corrigir?**
-
-No `routes/authRoutes.js`, altere:
+No `usuariosRepository.js`, na função `insertUser`:
 
 ```js
-router.delete('/users/:id', authMiddleware, authController.deleteUser);
+const [row] = await db("usuarios")
+  .insert({
+    nome: user.nome,
+    email: user.email,
+    senha: user.senha
+  })
+  .returning("id");
+
+return findUserById(row.id); 
 ```
 
-E no `authController.js`, renomeie a função:
+Porém, dependendo da versão do PostgreSQL e do Knex, o valor retornado pode ser apenas o id direto (número), não um objeto `{ id: ... }`. Isso pode causar erro ao acessar `row.id`.
+
+**Sugestão:** Ajuste para:
 
 ```js
-const deleteUser = async (req, res, next) => {
-  // lógica atual da função DELETE
-};
+const id = typeof row === 'object' ? row.id : row;
+return findUserById(id);
 ```
 
-E exporte com esse nome.
+Assim você evita erros ao buscar o usuário criado.
 
 ---
 
-### 4. Rota de agentes com prefixo errado
+### 2.6. Estrutura dos diretórios e arquivos — Está OK!
 
-No `server.js` você registrou as rotas de agentes assim:
+Sua estrutura está muito próxima do esperado, com as pastas e arquivos nomeados corretamente. Parabéns por isso! Isso ajuda muito a organização e manutenção do projeto.
+
+---
+
+### 2.7. Falta de validação nos filtros e buscas (testes bônus que falharam)
+
+Os testes bônus indicam que os filtros por status, agente_id, dataDeIncorporacao e buscas textuais não estão 100% funcionando.
+
+No seu `casosRepository.js` você tem:
 
 ```js
-app.use("/agente", authMiddleware, agentesRoutes);
+async function listarCasosComFiltros({ status, agente_id, q }) {
+  let query = db('casos');
+
+  if (status) {
+    query = query.where('status', status);
+  }
+
+  if (agente_id) {
+    query = query.where('agente_id', agente_id);
+  }
+
+  if (q) {
+    query = query.where(function() {
+      this.where('titulo', 'ilike', `%${q}%`)
+          .orWhere('descricao', 'ilike', `%${q}%`);
+    });
+  }
+
+  return await query.select('*');
+}
 ```
 
-Porém, no arquivo `routes/agentesRoutes.js`, as rotas são definidas para `/agentes` (plural), e os endpoints esperados também são `/agentes`.
+Isso parece correto, mas os testes podem estar esperando:
 
-**Por que isso é um problema?**  
-Se o prefixo for `/agente` (singular), e o cliente chamar `/agentes`, o servidor não vai reconhecer a rota. Isso pode causar erros 404 ou problemas de autorização.
+- Validação dos parâmetros (ex: status só pode ser "aberto" ou "solucionado").
+- O filtro por dataDeIncorporacao no agentesRepository para ordenação crescente e decrescente, que você implementou corretamente, mas pode precisar de validação extra.
 
-**Como corrigir?**
+Confira se você está validando esses filtros antes de passar para o banco e retornando erros claros.
 
-Altere no `server.js`:
+---
+
+## 3. Exemplos práticos de correções para você implementar
+
+### 3.1. Corrigir chave do token no login do authController.js
 
 ```js
-app.use("/agentes", authMiddleware, agentesRoutes);
-```
+// Antes
+return res.status(200).json({ acess_token: token });
 
-Assim, o prefixo e as rotas internas ficam alinhados.
+// Depois
+return res.status(200).json({ access_token: token });
+```
 
 ---
 
-### 5. Endpoint DELETE em agentesRoutes com rota incorreta
-
-No arquivo `routes/agentesRoutes.js`, você tem a rota para deletar agente assim:
+### 3.2. Ajustar insertUser no usuariosRepository.js
 
 ```js
-router.delete("/agentes/:id", agentesController.removerAgente);
+// Antes
+const [row] = await db("usuarios")
+  .insert({
+    nome: user.nome,
+    email: user.email,
+    senha: user.senha
+  })
+  .returning("id");
+
+return findUserById(row.id);
+
+// Depois
+const row = await db("usuarios")
+  .insert({
+    nome: user.nome,
+    email: user.email,
+    senha: user.senha
+  })
+  .returning("id");
+
+const id = Array.isArray(row) ? (typeof row[0] === 'object' ? row[0].id : row[0]) : row;
+
+return findUserById(id);
 ```
 
-Mas essa rota está dentro do arquivo que já é prefixado como `/agentes`, então o caminho completo fica `/agentes/agentes/:id`, o que está errado.
+---
 
-**Como corrigir?**
+### 3.3. Exemplo de validação com Zod para agentes (exemplo para o cadastrarAgente)
 
-Mude para:
+Você pode criar um schema para validar o payload:
 
 ```js
-router.delete("/:id", agentesController.removerAgente);
+import { z } from "zod";
+
+const agenteSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  dataDeIncorporacao: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de data inválido"),
+  cargo: z.enum(["inspetor", "delegado"])
+});
+
+async function cadastrarAgente(req, res) {
+  try {
+    const data = agenteSchema.parse(req.body);
+
+    // ... restante da lógica de criação
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.errors });
+    }
+    throw error;
+  }
+}
 ```
 
-Assim, a rota completa será `/agentes/:id`, que é o esperado.
+Isso garante que os dados estejam no formato correto e ajuda a evitar erros silenciosos.
 
 ---
 
-### 6. Falta de validação de payload nas rotas PUT e PATCH de agentes e casos
+### 3.4. Verifique se middleware está aplicado corretamente
 
-Percebi que nos controllers de agentes e casos, você faz validações manuais para os campos obrigatórios, mas não usa schemas ou validações robustas para garantir que o payload esteja correto e que não tenha campos extras.
+No arquivo `routes/authRoutes.js`, você importou dois middlewares:
 
-Isso pode causar aceitação de payloads inválidos ou com campos extras, o que pode impactar a segurança e a integridade dos dados.
+```js
+import validateSchema from "../middlewares/authMiddleware.js";
+import authMiddleware from "../middlewares/authMiddleware.js";
+```
 
-**Como melhorar?**
-
-- Use uma biblioteca de validação (como `zod` ou `Joi`) para validar os dados de entrada nas rotas PUT e PATCH.
-- Rejeite payloads que contenham campos extras.
-- Retorne erros 400 claros quando os dados estiverem incorretos.
-
----
-
-### 7. Logout não invalida token no backend
-
-Seu endpoint de logout apenas retorna uma mensagem, mas não invalida o token JWT no servidor (o que é normal em JWT stateless). Porém, no `INSTRUCTIONS.md` você menciona que o logout deve invalidar o token.
-
-Para lidar com isso, você pode implementar uma blacklist (lista negra) de tokens expirados, ou simplesmente orientar o cliente a apagar o token localmente.
+Mas só está usando `authMiddleware`. Se `validateSchema` não existe ou é uma confusão, remova essa importação para evitar confusão.
 
 ---
 
-## Pontos extras que você conseguiu (Bônus 🌟)
+## 4. Recomendações de estudos para você
 
-- Você criou o endpoint `/usuarios/me` para retornar os dados do usuário autenticado, protegendo com middleware JWT. Isso é ótimo para a experiência do usuário.
-- Implementou filtros e ordenações nas rotas de agentes e casos, o que mostra domínio do Knex e query building.
-- Documentou bem as rotas com Swagger e no `INSTRUCTIONS.md`, facilitando o uso da API.
-- Implementou mensagens de erro customizadas e status codes adequados para várias situações.
+Para te ajudar a corrigir os pontos acima, recomendo fortemente os seguintes vídeos feitos pelos meus criadores (eles explicam muito bem os conceitos que você precisa):
 
----
+- **Autenticação e segurança com JWT e bcrypt:** https://www.youtube.com/watch?v=Q4LQOfYwujk  
+- **JWT na prática:** https://www.youtube.com/watch?v=keS0JWOypIU  
+- **Uso de JWT e bcrypt no Node.js:** https://www.youtube.com/watch?v=L04Ln97AwoY  
+- **Validação e uso do Knex para migrations e queries:** https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s  
+- **Organização de projetos Node.js com MVC:** https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s  
 
-## Recomendações de aprendizado para você continuar evoluindo 📚
-
-- Para fortalecer seu entendimento de autenticação segura com JWT e bcrypt, recomendo muito este vídeo, feito pelos meus criadores, que explica os conceitos básicos e práticos:  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk
-
-- Para aprender a validar schemas com `zod` e evitar campos extras, veja a documentação e exemplos em:  
-  https://zod.dev/
-
-- Para entender melhor como configurar e usar migrations e seeds com Knex, veja este vídeo:  
-  https://www.youtube.com/watch?v=dXWy_aGCW1E
-
-- Para aprimorar a organização do seu projeto com arquitetura MVC no Node.js, recomendo:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+Esses vídeos vão te ajudar a entender melhor como estruturar seu código, validar dados e proteger rotas.
 
 ---
 
-## Resumo rápido dos principais pontos para focar 🎯
+## 5. Resumo rápido dos principais pontos para focar:
 
-- [ ] Use `.strict()` no schema Zod do registro para rejeitar campos extras e evitar criação de usuários com dados inesperados.
-- [ ] Ajuste o nome do campo do token JWT retornado no login para `acess_token` conforme esperado.
-- [ ] Corrija os prefixos das rotas: use `/agentes` no `server.js` e ajuste as rotas DELETE para não repetirem o prefixo.
-- [ ] Alinhe a rota DELETE de usuários para `/users/:id` e renomeie a função para algo mais claro (ex: `deleteUser`).
-- [ ] Implemente validações mais robustas e consistentes para os payloads das rotas PUT e PATCH.
-- [ ] Considere a estratégia de invalidação do token no logout ou documente claramente que o cliente deve descartar o token.
-- [ ] Teste todas as rotas protegidas sem token para garantir que retornam erro 401 corretamente.
+- Corrigir a chave do token retornado no login para `access_token` (com "c" e "s" na ordem correta).
+- Ajustar o retorno do ID na função `insertUser` para garantir que o usuário criado seja buscado corretamente.
+- Implementar validações mais rigorosas (idealmente com Zod) para agentes e casos, garantindo que payloads inválidos retornem status 400.
+- Garantir que o middleware de autenticação esteja aplicado corretamente em todas as rotas protegidas e bloqueie requisições sem token.
+- Padronizar a validação de IDs em todas as rotas que recebem parâmetros numéricos.
+- Revisar e implementar corretamente os filtros e buscas esperadas nos endpoints de agentes e casos.
+- Limpar importações desnecessárias ou confusas nos arquivos de rotas para evitar bugs.
 
 ---
 
-Alvaro, você está no caminho certo! Com esses ajustes seu projeto vai ficar muito mais sólido, seguro e alinhado com as melhores práticas. Continue firme que a segurança e a organização do backend são tópicos que fazem toda a diferença na carreira de um desenvolvedor. Estou aqui torcendo por você! 💪😄
+AlvaroDevh, você está no caminho certo! Não desanime com as falhas, elas são parte do aprendizado. Corrigindo esses pontos, sua API vai ficar muito mais robusta, segura e profissional. Continue firme, aproveite os recursos recomendados e não hesite em voltar para tirar dúvidas. 💪🔥
 
-Se precisar de ajuda para implementar algum desses pontos, só chamar! 🚀
-
-Abraços e até a próxima revisão! 👋✨
+Abraço e bons códigos! 🚀✨
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
