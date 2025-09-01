@@ -102,7 +102,7 @@ Deletar usuário
 http
 Copiar
 Editar
-DELETE /users/:id
+deleteUser /users/:id
 Authorization: Bearer seu_jwt_token
 7. Como passar o token JWT
 Nas rotas protegidas, adicione o header:

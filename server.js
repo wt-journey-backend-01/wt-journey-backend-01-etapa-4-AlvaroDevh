@@ -18,7 +18,7 @@ app.use(express.json());
 setupSwagger(app);
 
 app.use("/casos",  authMiddleware , casosRoutes);
-app.use( "/agente", authMiddleware, agentesRoutes);
+app.use( "/agentes", authMiddleware, agentesRoutes);
 app.use("/auth", authRoutes);
 
 

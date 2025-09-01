@@ -182,6 +182,6 @@ router.patch("/:id", agentesController.atualizarParcialAgente);
  *       404:
  *         description: "Agente não encontrado"
  */
-router.delete("/agentes/:id", agentesController.removerAgente);
+router.delete("/:id", agentesController.removerAgente);
 
 export default router;

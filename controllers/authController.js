@@ -16,7 +16,7 @@ const signUpSchema = z.object({
     .regex(/[A-Z]/, "Senha deve conter letra maiúscula")
     .regex(/[0-9]/, "Senha deve conter número")
     .regex(/[\W_]/, "Senha deve conter caractere especial"),
-});
+}).strict();
 
 const getProfile = async (req, res, next) => {
   try {
@@ -53,7 +53,7 @@ const login = async (req, res, next) => {
       { expiresIn: "1h" }
     );
 
-    return res.status(200).json({ access_token: token });
+    return res.status(200).json({ acess_token: token });
   } catch (error) {
     console.error("Erro no login:", error);
     return res.status(500).json({ error: "Erro interno no servidor" });
@@ -97,7 +97,7 @@ const logout = async (req, res) => {
   });
 };
 
-const DELETE = async (req, res, next) => {
+const deleteUser = async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
 
@@ -120,5 +120,5 @@ export default {
   register,
   signUpSchema,
   logout,
-  DELETE
+  deleteUser
 };
