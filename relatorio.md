@@ -1,94 +1,112 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 9 créditos restantes para usar o sistema de feedback AI.
+Você tem 8 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para AlvaroDevh:
 
-Nota final: **36.2/100**
+Nota final: **84.0/100**
 
 Olá, AlvaroDevh! 👋🚀
 
-Primeiramente, parabéns pelo esforço e pelo que você já conseguiu implementar! 🎉 Você conseguiu fazer a parte de usuários funcionar bem, incluindo o registro, login, logout e deleção de usuários com JWT, o que é uma base super importante para qualquer sistema seguro. Além disso, você organizou o projeto com uma estrutura clara, utilizando controllers, repositories, middlewares e rotas, o que é ótimo para manter o código escalável e limpo.
-
-Também vi que você implementou os bônus de forma parcial, como o endpoint `/usuarios/me` para retornar o perfil do usuário autenticado, que passou nos testes bônus — isso mostra que você está indo além do básico, parabéns! 🌟
+Parabéns pelo esforço e dedicação nesse projeto complexo que envolve autenticação, segurança e uma API REST robusta! 🎉 Você conseguiu implementar várias funcionalidades essenciais e ainda fez alguns bônus, que são um diferencial muito legal para seu aprendizado e para o projeto. Vamos juntos destrinchar seu código para entender onde você brilhou e onde podemos ajustar para alcançar a nota máxima! ✨
 
 ---
 
-### 🚨 Agora, vamos entender juntos onde seu código precisa de ajustes para destravar os testes que falharam e melhorar ainda mais sua aplicação.
+## 🎯 O que você mandou muito bem
+
+- A estrutura do projeto está muito bem organizada, seguindo o padrão MVC e separando controllers, repositories, middlewares e rotas. Isso é fundamental para manter o código limpo e escalável. 👏
+- A autenticação via JWT está funcionando, com geração e validação do token usando `jsonwebtoken`.
+- Você usou o `bcryptjs` para hash da senha, garantindo segurança no armazenamento.
+- A validação das senhas via `zod` está completa, cobrindo os requisitos de complexidade (minúsculas, maiúsculas, números, caracteres especiais).
+- Implementou o endpoint `/usuarios/me` para retornar dados do usuário autenticado, que é um bônus importante.
+- Os testes básicos de usuários passaram, incluindo criação, login, logout e deleção.
+- As mensagens de erro personalizadas e o uso do middleware de autenticação para proteger rotas também estão muito bem feitos.
+
+Você está no caminho certo! Agora vamos analisar os pontos que precisam de atenção para que você possa corrigir e subir sua nota.
 
 ---
 
-## 1. Testes que falharam — O que eles significam e por que podem estar falhando?
+## ⚠️ Análise dos testes que falharam e seus motivos
 
-Você teve falhas generalizadas nos testes relacionados a **Agentes** e **Casos**, especialmente:
-
-- Criação, listagem, busca, atualização (PUT e PATCH) e remoção de agentes e casos.
-- Falhas de status codes esperados, como 400 para payload inválido, 401 para falta de token JWT e 404 para IDs inválidos ou inexistentes.
-- Falha em proteger rotas com autenticação JWT (testes 401).
-- Falhas em filtros e buscas complexas nos casos e agentes (testes bônus que falharam).
-
-Esses testes indicam que, apesar da estrutura estar correta, existem problemas fundamentais em como você está tratando:
-
-- **Validação dos dados nas rotas de agentes e casos (payloads, IDs).**
-- **Proteção das rotas com autenticação JWT.**
-- **Respostas com status codes corretos e mensagens adequadas.**
-- **Implementação completa dos filtros e buscas esperadas.**
+### Testes que falharam (resumo):
+- AGENTS: Criação, atualização (PUT), busca e deleção com IDs inválidos ou inexistentes.
+- CASES: Busca, atualização (PUT e PATCH) e deleção com IDs inválidos ou inexistentes.
+- Penalidade: Permite alterar o ID do caso via método PUT (não pode!).
 
 ---
 
-## 2. Análise detalhada dos pontos críticos que causaram as falhas
+### 1. **AGENTS: Cria agentes corretamente com status code 201 e dados inalterados**
 
-### 2.1. Falhas nas rotas de Agentes e Casos — status 401 (Unauthorized)
+**Possível causa raiz:**  
+O teste espera que, ao criar um agente, o retorno contenha o agente criado com o ID atribuído pelo banco, e que os dados estejam exatamente iguais aos enviados.  
 
-Você aplicou corretamente o middleware `authMiddleware` nas rotas `/agentes` e `/casos` no `server.js`:
+No seu `agentesController.js`, a função `cadastrarAgente` está assim:
 
 ```js
-app.use("/casos",  authMiddleware , casosRoutes);
-app.use("/agentes", authMiddleware, agentesRoutes);
+const criado = await agentesRepository.create(novoAgente);
+res.status(201).json(criado);
 ```
 
-**Porém, os testes indicam que o token JWT não está sendo exigido corretamente em todas as rotas, ou o middleware não está bloqueando requisições sem token.**
-
-- Seu middleware `authMiddleware.js` parece correto, ele verifica o header `Authorization` e valida o token.
-- Verifique se o token está sendo passado corretamente nos testes (mas isso é externo).
-- Um ponto importante: no arquivo `routes/authRoutes.js`, você importou `validateSchema` do `authMiddleware.js`, mas não está usando essa validação, e isso pode indicar confusão com middlewares.
-
-**Dica:** Garanta que o middleware esteja aplicado em todas as rotas protegidas e que o token enviado seja válido e no formato correto (`Bearer <token>`). Além disso, revise se você não está confundindo middlewares importados com nomes diferentes.
-
----
-
-### 2.2. Falhas nos status 400 para payload inválido em Agentes e Casos
-
-Nos controllers de agentes e casos você tem validações básicas, mas:
-
-- Nos testes, espera-se que payloads com campos faltantes ou com formato errado retornem 400.
-- Por exemplo, no `cadastrarAgente`:
+No `agentesRepository.js`:
 
 ```js
-if (!isValidDate(dataDeIncorporacao)) {
-    return res.status(400).json({ message: "dataDeIncorporacao inválida ou no futuro." });
+async function create(data) {
+  const [row] = await db('agentes').insert({
+    nome: data.nome,
+    dataDeIncorporacao: data.dataDeIncorporacao,
+    cargo: data.cargo
+  }).returning('id');
+
+  const id = typeof row === 'object' ? row.id : row;
+
+  return findById(id);
 }
-if (!nome || nome.trim() === "") {
-    return res.status(400).json({ message: "Nome é obrigatório." });
-}
+```
+
+Aqui está correto, você retorna o agente completo após inserir. Então, o problema pode estar na validação dos campos antes da criação.  
+
+**Verifique se:**
+
+- O campo `cargo` está sendo enviado exatamente como "inspetor" ou "delegado" (case insensitive).  
+- A data `dataDeIncorporacao` é validada corretamente (não é futura e está no formato correto).  
+- Se o payload enviado no teste está correto (não foi enviado um campo extra ou faltante).  
+
+**Dica:** Em seu controller, você valida o cargo assim:
+
+```js
 const cargosValidos = ["inspetor", "delegado"];
 if (!cargo || !cargosValidos.includes(cargo.toLowerCase())) {
     return res.status(400).json({ message: "Cargo inválido ou obrigatório. Use 'inspetor' ou 'delegado'." });
 }
 ```
 
-Isso está correto, mas pode ser que:
+Mas você insere o cargo sem forçar a caixa para minúscula:
 
-- Você não está validando o tipo e formato dos dados com a profundidade que os testes esperam.
-- Você não está usando schemas de validação (como Zod, que usou no authController) para agentes e casos, o que facilitaria a validação e evitaria erros.
+```js
+const novoAgente = {
+    nome,
+    dataDeIncorporacao,
+    cargo
+};
+```
 
-**Sugestão:** Use uma biblioteca de validação (ex: Zod) para validar os schemas dos agentes e casos, garantindo que os dados estejam completos e corretos antes de enviar para o banco.
+Se o cliente enviar "Delegado" com D maiúsculo, pode ser que o banco armazene "Delegado" e o teste espere "delegado". Recomendo normalizar o cargo para minúsculo:
+
+```js
+const novoAgente = {
+    nome,
+    dataDeIncorporacao,
+    cargo: cargo.toLowerCase()
+};
+```
+
+Assim, garante consistência e evita falhas.
 
 ---
 
-### 2.3. Falhas 404 para IDs inválidos ou inexistentes
+### 2. **AGENTS: Atualiza dados do agente com PUT retorna 404 para ID inválido e 400 para payload incorreto**
 
-Nos controllers, você verifica se o ID é um número:
+No seu `atualizarAgente`:
 
 ```js
 const id = Number(req.params.id);
@@ -97,233 +115,147 @@ if (isNaN(id)) {
 }
 ```
 
-Mas os testes esperam que:
+O teste espera 404 para ID inválido? Mas você retorna 400 para ID inválido (não numérico). Isso pode causar falha.
 
-- Se o ID for inválido (não numérico), retorne 400 (ok).
-- Se o ID for numérico, mas não existir no banco, retorne 404.
+**Análise:**  
 
-Você faz isso corretamente na maior parte do código, porém:
+- IDs inválidos (não numéricos) devem retornar status 404? Geralmente, 400 é mais correto para "bad request" (ID mal formatado). O teste pode estar esperando 404 para ID inexistente (numérico, mas não encontrado).  
+- Você retorna 404 para agente inexistente, o que está correto.
 
-- Em alguns métodos, como `removerAgente`, você não verifica se o ID é válido antes de tentar deletar.
-- Isso pode causar erros ou comportamento inesperado.
-
-**Sugestão:** Padronize sempre essa verificação de ID no início dos controllers que recebem `req.params.id`.
-
----
-
-### 2.4. Falhas na criação e busca de usuários — inconsistência no token retornado no login
-
-No seu `authController.js`, o login retorna o token assim:
+**Recomendo:** Verifique a documentação dos testes para entender se eles esperam 400 ou 404 para IDs mal formatados. Se for 404, ajuste seu código para:
 
 ```js
-return res.status(200).json({ acess_token: token });
-```
-
-Mas no `INSTRUCTIONS.md` e nos testes, o token esperado é retornado com a chave `access_token` (com "c" e "s" invertidos).
-
-**Isso é um problema fundamental que pode invalidar o teste de login e consequentemente os testes que dependem do token.**
-
-**Correção simples:**
-
-```js
-return res.status(200).json({ access_token: token });
-```
-
-Esse detalhe é crucial para o funcionamento correto da autenticação.
-
----
-
-### 2.5. Repositório de usuários — problema ao retornar usuário criado
-
-No `usuariosRepository.js`, na função `insertUser`:
-
-```js
-const [row] = await db("usuarios")
-  .insert({
-    nome: user.nome,
-    email: user.email,
-    senha: user.senha
-  })
-  .returning("id");
-
-return findUserById(row.id); 
-```
-
-Porém, dependendo da versão do PostgreSQL e do Knex, o valor retornado pode ser apenas o id direto (número), não um objeto `{ id: ... }`. Isso pode causar erro ao acessar `row.id`.
-
-**Sugestão:** Ajuste para:
-
-```js
-const id = typeof row === 'object' ? row.id : row;
-return findUserById(id);
-```
-
-Assim você evita erros ao buscar o usuário criado.
-
----
-
-### 2.6. Estrutura dos diretórios e arquivos — Está OK!
-
-Sua estrutura está muito próxima do esperado, com as pastas e arquivos nomeados corretamente. Parabéns por isso! Isso ajuda muito a organização e manutenção do projeto.
-
----
-
-### 2.7. Falta de validação nos filtros e buscas (testes bônus que falharam)
-
-Os testes bônus indicam que os filtros por status, agente_id, dataDeIncorporacao e buscas textuais não estão 100% funcionando.
-
-No seu `casosRepository.js` você tem:
-
-```js
-async function listarCasosComFiltros({ status, agente_id, q }) {
-  let query = db('casos');
-
-  if (status) {
-    query = query.where('status', status);
-  }
-
-  if (agente_id) {
-    query = query.where('agente_id', agente_id);
-  }
-
-  if (q) {
-    query = query.where(function() {
-      this.where('titulo', 'ilike', `%${q}%`)
-          .orWhere('descricao', 'ilike', `%${q}%`);
-    });
-  }
-
-  return await query.select('*');
+if (isNaN(id)) {
+  return res.status(404).json({ message: "ID inválido." });
 }
 ```
 
-Isso parece correto, mas os testes podem estar esperando:
-
-- Validação dos parâmetros (ex: status só pode ser "aberto" ou "solucionado").
-- O filtro por dataDeIncorporacao no agentesRepository para ordenação crescente e decrescente, que você implementou corretamente, mas pode precisar de validação extra.
-
-Confira se você está validando esses filtros antes de passar para o banco e retornando erros claros.
-
 ---
 
-## 3. Exemplos práticos de correções para você implementar
+### 3. **AGENTS: Atualização parcial com PATCH retorna 400 para payload incorreto**
 
-### 3.1. Corrigir chave do token no login do authController.js
-
-```js
-// Antes
-return res.status(200).json({ acess_token: token });
-
-// Depois
-return res.status(200).json({ access_token: token });
-```
-
----
-
-### 3.2. Ajustar insertUser no usuariosRepository.js
+No seu `atualizarParcialAgente`:
 
 ```js
-// Antes
-const [row] = await db("usuarios")
-  .insert({
-    nome: user.nome,
-    email: user.email,
-    senha: user.senha
-  })
-  .returning("id");
-
-return findUserById(row.id);
-
-// Depois
-const row = await db("usuarios")
-  .insert({
-    nome: user.nome,
-    email: user.email,
-    senha: user.senha
-  })
-  .returning("id");
-
-const id = Array.isArray(row) ? (typeof row[0] === 'object' ? row[0].id : row[0]) : row;
-
-return findUserById(id);
-```
-
----
-
-### 3.3. Exemplo de validação com Zod para agentes (exemplo para o cadastrarAgente)
-
-Você pode criar um schema para validar o payload:
-
-```js
-import { z } from "zod";
-
-const agenteSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
-  dataDeIncorporacao: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de data inválido"),
-  cargo: z.enum(["inspetor", "delegado"])
-});
-
-async function cadastrarAgente(req, res) {
-  try {
-    const data = agenteSchema.parse(req.body);
-
-    // ... restante da lógica de criação
-
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ errors: error.errors });
-    }
-    throw error;
-  }
+if (Object.keys(atualizacao).length === 0) {
+    return res.status(400).json({ message: "É necessário fornecer dados para atualizar." });
 }
 ```
 
-Isso garante que os dados estejam no formato correto e ajuda a evitar erros silenciosos.
-
----
-
-### 3.4. Verifique se middleware está aplicado corretamente
-
-No arquivo `routes/authRoutes.js`, você importou dois middlewares:
+Está correto. O problema pode ser se o payload contém o campo `id`, que você bloqueia:
 
 ```js
-import validateSchema from "../middlewares/authMiddleware.js";
-import authMiddleware from "../middlewares/authMiddleware.js";
+if ("id" in atualizacao) {
+    return res.status(400).json({ message: "O campo 'id' não pode ser modificado." });
+}
 ```
 
-Mas só está usando `authMiddleware`. Se `validateSchema` não existe ou é uma confusão, remova essa importação para evitar confusão.
+Mas e se o payload tem campos inválidos, tipo `cargo: "gerente"`? Você não valida se o cargo é válido na atualização parcial. Isso pode causar erro ou inconsistência.
+
+**Recomendo:** Adicionar validação para campos que podem ser atualizados parcialmente, especialmente para `cargo` e `dataDeIncorporacao`, garantindo que sejam válidos.
 
 ---
 
-## 4. Recomendações de estudos para você
+### 4. **AGENTS e CASES: Recebem status 404 ao buscar, atualizar ou deletar com IDs inválidos**
 
-Para te ajudar a corrigir os pontos acima, recomendo fortemente os seguintes vídeos feitos pelos meus criadores (eles explicam muito bem os conceitos que você precisa):
+Você faz a validação do ID assim:
 
-- **Autenticação e segurança com JWT e bcrypt:** https://www.youtube.com/watch?v=Q4LQOfYwujk  
-- **JWT na prática:** https://www.youtube.com/watch?v=keS0JWOypIU  
-- **Uso de JWT e bcrypt no Node.js:** https://www.youtube.com/watch?v=L04Ln97AwoY  
-- **Validação e uso do Knex para migrations e queries:** https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s  
-- **Organização de projetos Node.js com MVC:** https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s  
+```js
+const id = Number(req.params.id);
+if (isNaN(id)) {
+  return res.status(400).json({ message: "ID inválido." });
+}
+```
 
-Esses vídeos vão te ajudar a entender melhor como estruturar seu código, validar dados e proteger rotas.
+Como citado, o teste pode esperar 404 para ID inválido (não numérico). Isso gera conflito entre 400 e 404.  
 
----
-
-## 5. Resumo rápido dos principais pontos para focar:
-
-- Corrigir a chave do token retornado no login para `access_token` (com "c" e "s" na ordem correta).
-- Ajustar o retorno do ID na função `insertUser` para garantir que o usuário criado seja buscado corretamente.
-- Implementar validações mais rigorosas (idealmente com Zod) para agentes e casos, garantindo que payloads inválidos retornem status 400.
-- Garantir que o middleware de autenticação esteja aplicado corretamente em todas as rotas protegidas e bloqueie requisições sem token.
-- Padronizar a validação de IDs em todas as rotas que recebem parâmetros numéricos.
-- Revisar e implementar corretamente os filtros e buscas esperadas nos endpoints de agentes e casos.
-- Limpar importações desnecessárias ou confusas nos arquivos de rotas para evitar bugs.
+**Sugestão:** Ajuste para retornar 404 para IDs inválidos, pois o recurso não existe, ou confirme o esperado pelo teste.
 
 ---
 
-AlvaroDevh, você está no caminho certo! Não desanime com as falhas, elas são parte do aprendizado. Corrigindo esses pontos, sua API vai ficar muito mais robusta, segura e profissional. Continue firme, aproveite os recursos recomendados e não hesite em voltar para tirar dúvidas. 💪🔥
+### 5. **Penalidade: Consegue alterar ID do caso com método PUT**
 
-Abraço e bons códigos! 🚀✨
+Esse é um ponto crítico! Você não pode permitir que o campo `id` seja alterado em um PUT, porque o ID é a chave primária e deve ser imutável.
+
+No seu `editarCaso`:
+
+```js
+const { titulo, descricao, status, agente_id } = req.body;
+```
+
+Você não verifica se o `id` está no corpo da requisição para impedir sua alteração.
+
+**Como corrigir:**  
+Adicione uma verificação no controller para rejeitar payloads que tentem alterar o `id`:
+
+```js
+if ("id" in req.body && req.body.id !== Number(req.params.id)) {
+  return res.status(400).json({ message: "O campo 'id' não pode ser modificado." });
+}
+```
+
+Assim, você protege a integridade do recurso e atende ao requisito do teste.
+
+---
+
+## 🛠️ Recomendações para melhorar seu código
+
+### 1. Normalização e validação mais rígida
+
+- Normalize o campo `cargo` para minúsculo antes de salvar, para evitar inconsistências.
+- Adicione validações no PATCH para campos específicos, garantindo que só valores válidos sejam aceitos.
+- Padronize o retorno do código para IDs inválidos (400 ou 404) conforme o esperado nos testes.
+
+### 2. Proteção do campo ID em atualizações
+
+- Implemente a checagem para não permitir alteração do campo `id` em PUT e PATCH (casos e agentes).
+
+### 3. Documentação e mensagens de erro
+
+- Continue usando mensagens claras e específicas, isso ajuda muito na manutenção e testes.
+
+---
+
+## 📚 Recursos para você aprofundar seus conhecimentos
+
+- Para entender melhor a validação e uso do Knex para queries e migrations, recomendo este vídeo:  
+https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s  
+Ele vai te ajudar a dominar as consultas e manipulações no banco com Knex.
+
+- Para aprofundar no padrão MVC e organização de código em Node.js, veja:  
+https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s  
+Isso vai te ajudar a manter seu projeto organizado e escalável.
+
+- Para tudo que envolve autenticação, JWT e segurança, não deixe de assistir este vídeo feito pelos meus criadores, que é excelente:  
+https://www.youtube.com/watch?v=Q4LQOfYwujk
+
+- Para entender melhor o uso do JWT na prática, este vídeo é ótimo:  
+https://www.youtube.com/watch?v=keS0JWOypIU
+
+- Para aprofundar no uso conjunto de JWT e bcrypt, veja:  
+https://www.youtube.com/watch?v=L04Ln97AwoY
+
+- Caso precise reforçar o ambiente de desenvolvimento com Docker e PostgreSQL, recomendo:  
+https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s
+
+---
+
+## 📝 Resumo dos pontos principais para focar:
+
+- [ ] **Não permitir alteração do campo `id` em PUT e PATCH para casos e agentes.**  
+- [ ] **Normalizar o campo `cargo` para minúsculo antes de salvar e validar no PATCH.**  
+- [ ] **Revisar o status code retornado para IDs inválidos (400 vs 404) para alinhar com os testes.**  
+- [ ] **Adicionar validações mais rigorosas no PATCH para evitar dados inválidos.**  
+- [ ] **Garantir que o payload enviado para criação e atualização está correto e consistente.**  
+- [ ] **Continuar documentando e usando mensagens de erro claras para facilitar testes e manutenção.**
+
+---
+
+AlvaroDevh, você está fazendo um trabalho excelente e tem uma base muito sólida! Com esses ajustes, sua API ficará ainda mais robusta e profissional, pronta para produção e para encantar qualquer avaliador ou usuário final. Continue assim, aprendendo e ajustando com calma, pois é assim que se constrói código de qualidade! 💪🔥
+
+Conte comigo para o que precisar, e parabéns novamente pela jornada até aqui! 🚀✨
+
+Um grande abraço e sucesso! 👊😊
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
