@@ -53,7 +53,7 @@ const login = async (req, res, next) => {
       { expiresIn: "1h" }
     );
 
-    return res.status(200).json({ acess_token: token });
+    return res.status(200).json({ access_token: token });
   } catch (error) {
     console.error("Erro no login:", error);
     return res.status(500).json({ error: "Erro interno no servidor" });
@@ -67,8 +67,8 @@ const register = async (req, res, next) => {
     const user = await userRepository.findUserByEmail(email);
 
     if (user) {
-    return res.status(400).json({ message: "Email já está em uso" });
-  }
+      return res.status(400).json({ message: "Email já está em uso" });
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedSenha = await bcrypt.hash(senha, salt);
